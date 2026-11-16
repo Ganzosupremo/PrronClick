@@ -4,12 +4,14 @@
 #include <ableton/Link.hpp>
 
 #include "miniaudio.h"
+#include "rules.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <mutex>
 
 #if defined(__ANDROID__)
 #include <dlfcn.h>
@@ -24,16 +26,38 @@ constexpr double kPi = 3.14159265358979323846;
 constexpr double kClickSeconds = 0.03;
 constexpr double kAccentHz = 1600.0;
 constexpr double kBeatHz = 1000.0;
+// Link's own bar/phase is unused: peers' beat numbers differ by an integer, so
+// bars come from our origin (shared by the leader) and Link only aligns beats.
+constexpr double kQuantum = 1.0;
+
+// Bar settings plus a change scheduled at a future beat, so every peer switches
+// meter on the same downbeat.
+struct BarConfig {
+  pc::Rules rules;
+  bool hasPending = false;
+  int pendingBeatsPerBar = 4;
+  double pendingOrigin = 0.0;
+
+  void applyPendingAt(double beat) {
+    if (hasPending && beat >= pendingOrigin) {
+      rules.beatsPerBar = pendingBeatsPerBar;
+      rules.origin = pendingOrigin;
+      hasPending = false;
+    }
+  }
+};
 
 struct Engine {
   ableton::Link link{120.0};
   ma_device device{};
   double sampleRate = 48000.0;
-  std::atomic<double> quantum{4.0};
+  std::mutex configMutex;
+  BarConfig config;  // guarded by configMutex
   std::atomic<double> extraLatencyMicros{0.0};
   std::atomic<double> outputLatencyMicros{0.0};
 
   // Audio thread only.
+  BarConfig audioConfig;
   double lastBeat = -1.0;
   double clickFreq = 0.0;
   long clickSample = 0;
@@ -91,22 +115,32 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
 #endif
 
   const auto state = e.link.captureAudioSessionState();
-  const double quantum = e.quantum.load();
   // Time at which the first frame of this buffer reaches the speaker.
   const auto hostTime =
       e.link.clock().micros() +
       microseconds(std::llround(e.outputLatencyMicros + e.extraLatencyMicros.load()));
+
+  // Never block the audio thread: if the UI holds the lock, keep last buffer's copy.
+  if (e.configMutex.try_lock()) {
+    if (state.isPlaying()) e.config.applyPendingAt(state.beatAtTime(hostTime, kQuantum));
+    e.audioConfig = e.config;
+    e.configMutex.unlock();
+  }
+  auto& cfg = e.audioConfig;
   const double microsPerFrame = 1e6 / e.sampleRate;
 
   for (ma_uint32 i = 0; i < frames; ++i) {
     if (state.isPlaying()) {
       const auto t = hostTime + microseconds(std::llround(i * microsPerFrame));
-      const double beat = state.beatAtTime(t, quantum);
-      if (beat >= 0.0 && std::floor(beat) > std::floor(e.lastBeat)) {
-        const bool accent = state.phaseAtTime(t, quantum) < 1.0;
-        e.clickFreq = accent ? kAccentHz : kBeatHz;
-        e.clickSample = 0;
-        e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
+      const double beat = state.beatAtTime(t, kQuantum);
+      cfg.applyPendingAt(beat);
+      if (beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat)) {
+        const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
+        if (!pc::isMuted(cfg.rules, coord)) {
+          e.clickFreq = pc::isAccent(cfg.rules, coord) ? kAccentHz : kBeatHz;
+          e.clickSample = 0;
+          e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
+        }
       }
       e.lastBeat = beat;
     } else {
@@ -194,8 +228,11 @@ void pc_set_playing(bool playing) {
   auto state = g->link.captureAppSessionState();
   const auto now = g->link.clock().micros();
   if (playing) {
-    // Beat 0 lands on the next bar boundary of the shared session.
-    state.setIsPlayingAndRequestBeatAtTime(true, now, 0.0, g->quantum.load());
+    // Beat 0 lands on the next shared beat; the bar starts there.
+    state.setIsPlayingAndRequestBeatAtTime(true, now, 0.0, kQuantum);
+    std::lock_guard<std::mutex> lock(g->configMutex);
+    g->config.rules.origin = 0.0;
+    g->config.hasPending = false;
   } else {
     state.setIsPlaying(false, now);
   }
@@ -218,7 +255,68 @@ double pc_tempo(void) {
 }
 
 void pc_set_beats_per_bar(int beats) {
-  if (g) g->quantum = std::clamp(beats, 1, 16);
+  if (!g) return;
+  beats = std::clamp(beats, 1, 16);
+  const auto state = g->link.captureAppSessionState();
+  const double beat = state.beatAtTime(g->link.clock().micros(), kQuantum);
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto& c = g->config;
+  if (!state.isPlaying()) {
+    c.rules.beatsPerBar = beats;
+    c.hasPending = false;
+    return;
+  }
+  // Mid-song: switch on the next downbeat (after any change already due).
+  c.applyPendingAt(beat);
+  const pc::Rules& r = c.rules;
+  c.pendingOrigin = r.origin + (pc::barAt(r, beat) + 1) * r.beatsPerBar;
+  c.pendingBeatsPerBar = beats;
+  c.hasPending = true;
+}
+
+void pc_set_bar(int beatsPerBar, double origin, int nextBeatsPerBar, double nextOrigin) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto& c = g->config;
+  c.rules.beatsPerBar = std::clamp(beatsPerBar, 1, 16);
+  c.rules.origin = origin;
+  c.hasPending = nextBeatsPerBar > 0;
+  c.pendingBeatsPerBar = std::clamp(nextBeatsPerBar, 1, 16);
+  c.pendingOrigin = nextOrigin;
+}
+
+// Reads the bar settings, applying a due pending change so the UI agrees with
+// what is heard.
+static BarConfig currentConfig() {
+  const auto state = g->link.captureAppSessionState();
+  const double beat = state.beatAtTime(g->link.clock().micros(), kQuantum);
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  if (state.isPlaying()) g->config.applyPendingAt(beat);
+  return g->config;
+}
+
+int pc_beats_per_bar(void) { return g ? currentConfig().rules.beatsPerBar : 4; }
+double pc_bar_origin(void) { return g ? currentConfig().rules.origin : 0.0; }
+
+int pc_pending_beats_per_bar(void) {
+  if (!g) return 0;
+  const auto c = currentConfig();
+  return c.hasPending ? c.pendingBeatsPerBar : 0;
+}
+
+double pc_pending_origin(void) { return g ? currentConfig().pendingOrigin : 0.0; }
+
+void pc_set_displacement(int barsPerStep) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.rules.displaceBars = std::max(0, barsPerStep);
+}
+
+void pc_set_gap_trainer(int playBars, int muteBars) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.rules.gapPlay = std::max(0, playBars);
+  g->config.rules.gapMute = std::max(0, muteBars);
 }
 
 void pc_set_extra_latency_ms(double ms) {
@@ -231,8 +329,7 @@ double pc_output_latency_ms(void) {
 
 double pc_beat(void) {
   if (!g) return 0.0;
-  return g->link.captureAppSessionState().beatAtTime(g->link.clock().micros(),
-                                                     g->quantum.load());
+  return g->link.captureAppSessionState().beatAtTime(g->link.clock().micros(), kQuantum);
 }
 
 }  // extern "C"

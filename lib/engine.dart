@@ -45,7 +45,32 @@ class Engine {
           ),
       beat = lib.lookupFunction<Double Function(), double Function()>(
         'pc_beat',
-      );
+      ),
+      setBar = lib
+          .lookupFunction<
+            Void Function(Int, Double, Int, Double),
+            void Function(int, double, int, double)
+          >('pc_set_bar'),
+      beatsPerBar = lib.lookupFunction<Int Function(), int Function()>(
+        'pc_beats_per_bar',
+      ),
+      barOrigin = lib.lookupFunction<Double Function(), double Function()>(
+        'pc_bar_origin',
+      ),
+      pendingBeatsPerBar = lib.lookupFunction<Int Function(), int Function()>(
+        'pc_pending_beats_per_bar',
+      ),
+      pendingOrigin = lib.lookupFunction<Double Function(), double Function()>(
+        'pc_pending_origin',
+      ),
+      setDisplacement = lib
+          .lookupFunction<Void Function(Int), void Function(int)>(
+            'pc_set_displacement',
+          ),
+      setGapTrainer = lib
+          .lookupFunction<Void Function(Int, Int), void Function(int, int)>(
+            'pc_set_gap_trainer',
+          );
 
   static DynamicLibrary _open(String? path) {
     final name =
@@ -71,4 +96,13 @@ class Engine {
   final void Function(double) setExtraLatencyMs;
   final double Function() outputLatencyMs;
   final double Function() beat;
+
+  /// (beatsPerBar, origin, nextBeatsPerBar or 0, nextOrigin)
+  final void Function(int, double, int, double) setBar;
+  final int Function() beatsPerBar;
+  final double Function() barOrigin;
+  final int Function() pendingBeatsPerBar;
+  final double Function() pendingOrigin;
+  final void Function(int) setDisplacement;
+  final void Function(int, int) setGapTrainer;
 }

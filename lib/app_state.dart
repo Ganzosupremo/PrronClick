@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'engine.dart';
 import 'library.dart';
+import 'share.dart';
 
 enum ShareMode { solo, leader, follower }
 
@@ -29,24 +30,61 @@ class AppState extends ChangeNotifier {
   final bool audioOk;
 
   ShareMode shareMode = ShareMode.solo;
-  int beatsPerBar = 4;
+  ShareChannel? _channel;
+
+  // Practice tools: per session, not saved.
+  int displaceBars = 0;
+  bool gapTrainer = false;
+  int gapPlay = 4;
+  int gapMute = 2;
 
   bool get canControl => shareMode != ShareMode.follower;
 
-  void setShareMode(ShareMode mode) {
+  Future<void> setShareMode(ShareMode mode) async {
     engine.setLinkEnabled(mode != ShareMode.solo);
     shareMode = mode;
     notifyListeners();
+    _channel?.close();
+    _channel = null;
+    try {
+      final channel = switch (mode) {
+        ShareMode.solo => null,
+        ShareMode.leader => await ShareChannel.leader(engine),
+        ShareMode.follower => await ShareChannel.follower(engine),
+      };
+      // The user may have switched again while the socket was opening.
+      if (shareMode == mode) {
+        _channel = channel;
+      } else {
+        channel?.close();
+      }
+    } on SocketException catch (e) {
+      // Link still syncs the beat; only bar alignment is lost.
+      debugPrint('share channel unavailable: $e');
+    }
   }
 
-  void setBeatsPerBar(int beats) {
-    engine.setBeatsPerBar(beats);
-    beatsPerBar = beats;
+  void setDisplacement(int bars) {
+    displaceBars = bars;
+    engine.setDisplacement(bars);
+    notifyListeners();
+  }
+
+  void setGapTrainer({bool? enabled, int? play, int? mute}) {
+    gapTrainer = enabled ?? gapTrainer;
+    gapPlay = play ?? gapPlay;
+    gapMute = mute ?? gapMute;
+    engine.setGapTrainer(gapTrainer ? gapPlay : 0, gapTrainer ? gapMute : 0);
     notifyListeners();
   }
 
   void setPracticeTools(bool enabled) {
     library.practiceTools = enabled;
+    // Hidden tools must not keep changing the click.
+    if (!enabled) {
+      setDisplacement(0);
+      setGapTrainer(enabled: false);
+    }
     notifyListeners();
     store.save(library);
   }

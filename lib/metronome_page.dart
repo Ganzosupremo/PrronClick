@@ -22,6 +22,9 @@ class _MetronomePageState extends State<MetronomePage>
   bool playing = false;
   int peers = 0;
   double beat = 0;
+  int beatsPerBar = 4;
+  double origin = 0;
+  int pendingBeatsPerBar = 0;
 
   AppState get state => widget.state;
 
@@ -35,6 +38,9 @@ class _MetronomePageState extends State<MetronomePage>
         playing = e.isPlaying();
         peers = e.numPeers();
         beat = e.beat();
+        beatsPerBar = e.beatsPerBar();
+        origin = e.barOrigin();
+        pendingBeatsPerBar = e.pendingBeatsPerBar();
       });
     })..start();
   }
@@ -58,8 +64,15 @@ class _MetronomePageState extends State<MetronomePage>
   Widget _build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final canControl = state.canControl;
-    final beatsPerBar = state.beatsPerBar;
-    final currentBeat = playing && beat >= 0 ? beat.floor() % beatsPerBar : -1;
+    final currentBeat = playing && beat >= 0
+        ? (beat - origin).floor() % beatsPerBar
+        : -1;
+    final bar = ((beat - origin) / beatsPerBar).floor();
+    final muted =
+        playing &&
+        state.library.practiceTools &&
+        state.gapTrainer &&
+        bar % (state.gapPlay + state.gapMute) >= state.gapPlay;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -92,7 +105,17 @@ class _MetronomePageState extends State<MetronomePage>
               ),
           ],
         ),
-        const SizedBox(height: 32),
+        SizedBox(
+          height: 24,
+          child: muted
+              ? Text(
+                  'Silencio',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.outline),
+                )
+              : null,
+        ),
+        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -139,26 +162,37 @@ class _MetronomePageState extends State<MetronomePage>
           children: [
             const Expanded(child: Text('Compás')),
             DropdownButton<int>(
-              value: beatsPerBar,
+              // Show the meter the user picked even before its downbeat comes.
+              value: pendingBeatsPerBar > 0 ? pendingBeatsPerBar : beatsPerBar,
               items: [
                 for (final n in [2, 3, 4, 5, 6, 7])
                   DropdownMenuItem(value: n, child: Text('$n/4')),
+                if (![2, 3, 4, 5, 6, 7].contains(beatsPerBar))
+                  DropdownMenuItem(
+                    value: beatsPerBar,
+                    child: Text('$beatsPerBar/4'),
+                  ),
               ],
-              onChanged: (n) => state.setBeatsPerBar(n!),
+              onChanged: canControl
+                  ? (n) => state.engine.setBeatsPerBar(n!)
+                  : null,
             ),
           ],
         ),
         const SizedBox(height: 8),
-        _ToolsPanel(state: state),
+        _ToolsPanel(state: state, bar: playing ? bar : 0),
       ],
     );
   }
 }
 
 class _ToolsPanel extends StatelessWidget {
-  const _ToolsPanel({required this.state});
+  const _ToolsPanel({required this.state, required this.bar});
 
   final AppState state;
+  final int bar;
+
+  static const _steps = ['1', 'e', '&', 'a'];
 
   @override
   Widget build(BuildContext context) {
@@ -184,16 +218,82 @@ class _ToolsPanel extends StatelessWidget {
           ),
           if (state.library.practiceTools) ...[
             const Divider(height: 32),
-            const Text('Herramientas de práctica'),
-            const SizedBox(height: 4),
-            // shortcut: placeholder until phase 2 adds them to the engine.
+            Row(
+              children: [
+                const Expanded(child: Text('Click desplazado')),
+                if (state.displaceBars > 0)
+                  Text('Ahora en: ${_steps[(bar ~/ state.displaceBars) % 4]}'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<int>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 0, label: Text('No')),
+                ButtonSegment(value: 2, label: Text('Cada 2')),
+                ButtonSegment(value: 3, label: Text('Cada 3')),
+              ],
+              selected: {state.displaceBars},
+              onSelectionChanged: (s) => state.setDisplacement(s.first),
+            ),
             Text(
-              'Click desplazado y entrenador de tempo: llegan en la próxima fase.',
+              'Se mueve una semicorchea cada 2 o 3 compases: 1, e, &, a.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Entrenador de tempo'),
+              subtitle: const Text(
+                'El click suena unos compases y luego se calla.',
+              ),
+              value: state.gapTrainer,
+              onChanged: (v) => state.setGapTrainer(enabled: v),
+            ),
+            if (state.gapTrainer) ...[
+              _BarsRow(
+                label: 'Compases con click',
+                value: state.gapPlay,
+                onChanged: (n) => state.setGapTrainer(play: n),
+              ),
+              _BarsRow(
+                label: 'Compases en silencio',
+                value: state.gapMute,
+                onChanged: (n) => state.setGapTrainer(mute: n),
+              ),
+            ],
           ],
         ],
       ),
+    );
+  }
+}
+
+class _BarsRow extends StatelessWidget {
+  const _BarsRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label)),
+        DropdownButton<int>(
+          value: value,
+          items: [
+            for (var n = 1; n <= 8; n++)
+              DropdownMenuItem(value: n, child: Text('$n')),
+          ],
+          onChanged: (n) => onChanged(n!),
+        ),
+      ],
     );
   }
 }
