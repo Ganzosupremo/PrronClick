@@ -69,6 +69,17 @@
      broadcast del compás. Apple tiene que concederlo al equipo antes de
      poder firmar: <https://developer.apple.com/contact/request/networking-multicast>.
 
+7. **Tap tempo y cuenta de entrada** (hecho en código, sin oír en un
+   dispositivo):
+   - Tap tempo: media de los últimos 5 toques; más de 3 s sin tocar empieza
+     de nuevo (`tapBpm` en `lib/song.dart`).
+   - Cuenta de entrada (Ajustes: 0, 1 o 2 compases): al dar a play y en cada
+     cambio de canción del setlist, después de la pausa, suenan compases de
+     click en otro tono (1200/750 Hz) que no cuentan para la duración de la
+     canción. Es un tramo `countUntil` en las reglas del click, compartido
+     en el broadcast (`count`): los seguidores oyen la cuenta del líder, no
+     la de su ajuste. El entrenador de tempo no la silencia.
+
 ## Audio con la pantalla apagada (Android) — hecho
 
 - `PlaybackService`: servicio en primer plano (tipo `mediaPlayback`) con
@@ -87,6 +98,9 @@
   notificación.
 - Comprobado en el Samsung: con la pantalla apagada el click siguió sonando, y Parar desde la
   notificación lo detuvo y cerró el servicio.
+- Comprobado con el PC como compañero: Parar en el seguidor lo saca de la
+  sesión y el líder sigue sonando; Parar en el líder para también al
+  seguidor y el teléfono sigue como líder.
 
 ## Comprobado con dispositivos reales
 
@@ -109,8 +123,8 @@
   activa el motor sigue corriendo en segundo plano aunque esté parado; pararlo
   si se queda sin sonar ni compañeros.
 - Latencia real en Windows (reloj de WASAPI).
-- Más adelante: código de sesión para varias bandas en la misma red, cuenta de
-  entrada, subdivisiones audibles, secciones dentro de una canción, y
+- Más adelante: código de sesión para varias bandas en la misma red,
+  subdivisiones audibles, secciones dentro de una canción, y
   exportar/importar setlists.
 
 ## Herramientas de desarrollo
