@@ -2,9 +2,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'setlist.dart';
 import 'song.dart';
 
-/// Everything the app saves: settings now, songs and setlists in later phases.
+/// Everything the app saves: settings, songs and setlists.
 class Library {
   Library({
     this.practiceTools = false,
@@ -14,7 +15,7 @@ class Library {
     this.gapPlay = 4,
     this.gapMute = 2,
     List<Song>? songs,
-    List<Object?>? setlists,
+    List<Setlist>? setlists,
   }) : songs = songs ?? [],
        setlists = setlists ?? [];
 
@@ -34,7 +35,10 @@ class Library {
       songs: [
         for (final s in (json['songs'] as List?) ?? const []) ?Song.fromJson(s),
       ],
-      setlists: (json['setlists'] as List?)?.toList(),
+      setlists: [
+        for (final s in (json['setlists'] as List?) ?? const [])
+          ?Setlist.fromJson(s),
+      ],
     );
   }
 
@@ -45,8 +49,7 @@ class Library {
   int gapPlay;
   int gapMute;
   final List<Song> songs;
-  // Kept as raw JSON until phase 4 gives them a model.
-  final List<Object?> setlists;
+  final List<Setlist> setlists;
 
   Map<String, Object?> toJson() => {
     'version': 1,
@@ -59,7 +62,7 @@ class Library {
       'gapMute': gapMute,
     },
     'songs': [for (final s in songs) s.toJson()],
-    'setlists': setlists,
+    'setlists': [for (final s in setlists) s.toJson()],
   };
 }
 

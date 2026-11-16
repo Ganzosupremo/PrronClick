@@ -11,7 +11,7 @@ import 'engine.dart';
 /// differently (off by a whole number k). The leader broadcasts its beat and
 /// bar origin; each follower works out k and shifts the origin by it.
 class ShareChannel {
-  ShareChannel._(this.engine, this.socket);
+  ShareChannel._(this.engine, this.socket, {this.songName, this.onSongName});
 
   static const port = 20809;
   static const _interval = Duration(milliseconds: 300);
@@ -20,25 +20,37 @@ class ShareChannel {
   final RawDatagramSocket socket;
   Timer? _timer;
 
+  /// Leader: name of the song being played, if any.
+  final String? Function()? songName;
+
+  /// Follower: called with the leader's song name (null = none).
+  final void Function(String?)? onSongName;
+
   // Follower: recent k values (median rejects a packet delayed past a beat).
   final _ks = <int>[];
   bool? _leaderPlaying;
 
-  static Future<ShareChannel> leader(Engine engine) async {
+  static Future<ShareChannel> leader(
+    Engine engine, {
+    String? Function()? songName,
+  }) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0)
       ..broadcastEnabled = true;
-    final channel = ShareChannel._(engine, socket);
+    final channel = ShareChannel._(engine, socket, songName: songName);
     channel._timer = Timer.periodic(_interval, (_) => channel._send());
     return channel;
   }
 
-  static Future<ShareChannel> follower(Engine engine) async {
+  static Future<ShareChannel> follower(
+    Engine engine, {
+    void Function(String?)? onSongName,
+  }) async {
     final socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       port,
       reuseAddress: true,
     );
-    final channel = ShareChannel._(engine, socket);
+    final channel = ShareChannel._(engine, socket, onSongName: onSongName);
     socket.listen((event) {
       if (event != RawSocketEvent.read) return;
       final datagram = socket.receive();
@@ -54,6 +66,7 @@ class ShareChannel {
 
   void _send() {
     final next = engine.pendingBeatsPerBar();
+    final song = songName?.call();
     final message = {
       'v': 1,
       'beat': engine.beat(),
@@ -61,6 +74,7 @@ class ShareChannel {
       'bpb': engine.beatsPerBar(),
       'origin': engine.barOrigin(),
       if (next > 0) 'next': {'bpb': next, 'origin': engine.pendingOrigin()},
+      'song': ?song,
     };
     // shortcut: limited broadcast goes out one interface only; send per
     // interface (subnet broadcast) if a multi-homed leader is not heard.
@@ -95,6 +109,8 @@ class ShareChannel {
     }
     // Without a Link connection our beats are unrelated to the leader's.
     if (engine.numPeers() == 0) return;
+    final song = m['song'];
+    onSongName?.call(song is String ? song : null);
 
     // Starting re-numbers our beats, and so does the leader starting: old k
     // values no longer apply.

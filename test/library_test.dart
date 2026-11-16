@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prronclick/library.dart';
+import 'package:prronclick/setlist.dart';
 import 'package:prronclick/song.dart';
 
 void main() {
@@ -101,5 +102,37 @@ void main() {
     expect(names('', 3), ['Vals', 'Otra canción']);
     expect(names('triste', 3), isEmpty);
     expect(names('  '), hasLength(3));
+  });
+
+  test('setlists round-trip and skip deleted songs', () async {
+    final a = Song(id: 'a', name: 'A', bpm: 120, beatsPerBar: 4);
+    final b = Song(id: 'b', name: 'B', bpm: 90, beatsPerBar: 3);
+    await store.save(
+      Library(
+        songs: [a, b],
+        setlists: [
+          Setlist(id: 's', name: 'Gig', songIds: ['b', 'x', 'a', 'b']),
+        ],
+      ),
+    );
+    final lib = await store.load();
+    final set = lib.setlists.single;
+    expect(set.name, 'Gig');
+    expect(set.autoAdvance, isTrue);
+    expect([for (final s in set.songsFrom(lib.songs)) s.id], ['b', 'a', 'b']);
+  });
+
+  test('song length in bars', () {
+    Song song(int? secs, double bpm, int bpb) => Song(
+      id: '',
+      name: '',
+      bpm: bpm,
+      beatsPerBar: bpb,
+      durationSeconds: secs,
+    );
+    expect(songBars(song(null, 120, 4)), isNull);
+    expect(songBars(song(60, 120, 4)), 30); // 120 beats
+    expect(songBars(song(200, 84, 3)), 93); // 280 beats / 3 = 93.3
+    expect(songBars(song(1, 60, 4)), 1);
   });
 }

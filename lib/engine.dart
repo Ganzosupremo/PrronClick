@@ -67,6 +67,11 @@ class Engine {
           .lookupFunction<Void Function(Int), void Function(int)>(
             'pc_set_displacement',
           ),
+      scheduleSong = lib
+          .lookupFunction<
+            Void Function(Double, Double, Int),
+            void Function(double, double, int)
+          >('pc_schedule_song'),
       setGapTrainer = lib
           .lookupFunction<Void Function(Int, Int), void Function(int, int)>(
             'pc_set_gap_trainer',
@@ -105,4 +110,7 @@ class Engine {
   final double Function() pendingOrigin;
   final void Function(int) setDisplacement;
   final void Function(int, int) setGapTrainer;
+
+  /// (beat, bpm or 0 to stop there, beatsPerBar)
+  final void Function(double, double, int) scheduleSong;
 }

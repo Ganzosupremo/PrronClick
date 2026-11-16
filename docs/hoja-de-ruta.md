@@ -18,9 +18,12 @@
      - El seguidor arranca solo si el líder ya está sonando. Link no lo hace.
 3. **Canciones** (hecha): crear, editar y borrar (nombre, tempo, compás y
    duración opcional), y cargarlas en el metrónomo tocándolas.
-4. **Setlists:** avance automático entre canciones (cambio de tempo y de compás
-   en el pulso exacto), pausa entre canciones y tramo silenciado. El broadcast
-   añade la canción actual.
+4. **Setlists** (hecha): listas ordenadas de canciones, con avance automático
+   al acabar la duración de cada una. El tempo y el compás cambian en el pulso
+   exacto (`pc_schedule_song`) y al final del setlist se para. Botones de
+   anterior/siguiente (cambian en el próximo compás). El broadcast añade el
+   nombre de la canción para los seguidores.
+   - Pendiente: pausa entre canciones y tramo silenciado.
 5. **Calibración automática de latencia:** el líder escucha con su micrófono
    los clicks de cada seguidor, los sitúa en la rejilla de Link y le envía la
    corrección por el broadcast. Así los dispositivos que no informan de su
@@ -58,5 +61,7 @@
   esperado.
 - `native/rules_test.cpp`: test de las reglas del click. Se compila con
   `-DPRRONCLICK_TESTS=ON` en `native/CMakeLists.txt`.
+- `tool/setlist_smoke.dart`: comprueba que un cambio de canción programado no
+  mueve el pulso y que el final del setlist para la música.
 - `tool/latency_probe`: graba el micrófono alineado con Link para medir dónde
   suena cada dispositivo. Se compila con CMake (ver su `CMakeLists.txt`).

@@ -40,6 +40,11 @@ PC_API double pc_bar_origin(void);
 PC_API int pc_pending_beats_per_bar(void);  // 0 = none
 PC_API double pc_pending_origin(void);
 
+// Setlists (leader or solo): at `beat`, switch to a new song: tempo and meter
+// change on that downbeat. bpm <= 0 stops playback there instead (last song).
+// Replaces any pending change; a later meter change replaces this one.
+PC_API void pc_schedule_song(double beat, double bpm, int beatsPerBar);
+
 // Practice tools, local to this device; 0 turns each off.
 // Shift the click a 16th note every barsPerStep bars: 1, e, &, a, 1...
 PC_API void pc_set_displacement(int barsPerStep);

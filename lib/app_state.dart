@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'engine.dart';
 import 'library.dart';
+import 'setlist.dart';
 import 'share.dart';
 import 'song.dart';
 
@@ -44,6 +46,12 @@ class AppState extends ChangeNotifier {
   /// Last song loaded into the metronome (shown above the tempo).
   Song? currentSong;
 
+  /// Follower: the song the leader announces.
+  String? leaderSongName;
+
+  String? get songName =>
+      shareMode == ShareMode.follower ? leaderSongName : currentSong?.name;
+
   void saveSong(Song song) {
     if (!library.songs.contains(song)) library.songs.add(song);
     _libraryChanged();
@@ -58,13 +66,24 @@ class AppState extends ChangeNotifier {
 
   void deleteSong(Song song) {
     library.songs.remove(song);
+    for (final s in library.setlists) {
+      s.songIds.removeWhere((id) => id == song.id);
+    }
     if (currentSong == song) currentSong = null;
+    // Positions in the running setlist may have shifted.
+    if (activeSetlist != null) stopSetlist();
     _libraryChanged();
+  }
+
+  /// Loads a single song, leaving any running setlist.
+  void loadSong(Song song) {
+    if (activeSetlist != null) stopSetlist();
+    _load(song);
   }
 
   /// Sets tempo and meter from the song. While playing, the meter switches on
   /// the next downbeat.
-  void loadSong(Song song) {
+  void _load(Song song) {
     engine.setTempo(song.bpm);
     engine.setBeatsPerBar(song.beatsPerBar);
     currentSong = song;
@@ -76,17 +95,139 @@ class AppState extends ChangeNotifier {
     store.save(library);
   }
 
+  // ---- Setlists ----
+
+  void saveSetlist(Setlist setlist) {
+    if (!library.setlists.contains(setlist)) library.setlists.add(setlist);
+    _libraryChanged();
+  }
+
+  void deleteSetlist(Setlist setlist) {
+    library.setlists.remove(setlist);
+    if (activeSetlist == setlist) stopSetlist();
+    _libraryChanged();
+  }
+
+  Setlist? activeSetlist;
+  int setlistIndex = 0;
+
+  /// Beat where the next song (or the end) is scheduled; null if none yet.
+  double? get changeBeat => _changeBeat;
+  double? _changeBeat;
+  int _changeIndex = 0;
+  Timer? _setlistTimer;
+
+  List<Song> get setlistSongs =>
+      activeSetlist?.songsFrom(library.songs) ?? const [];
+
+  void startSetlist(Setlist setlist, [int index = 0]) {
+    final songs = setlist.songsFrom(library.songs);
+    if (index >= songs.length) return;
+    activeSetlist = setlist;
+    setlistIndex = index;
+    _changeBeat = null;
+    _load(songs[index]);
+    _setlistTimer ??= Timer.periodic(
+      const Duration(milliseconds: 100),
+      (_) => _setlistTick(),
+    );
+  }
+
+  void stopSetlist() {
+    activeSetlist = null;
+    _changeBeat = null;
+    _setlistTimer?.cancel();
+    _setlistTimer = null;
+    notifyListeners();
+  }
+
+  /// Jumps to song [index]: now if stopped, else on the next downbeat.
+  void goToSong(int index) {
+    if (index < 0 || index >= setlistSongs.length) return;
+    if (!engine.isPlaying()) {
+      setlistIndex = index;
+      _changeBeat = null;
+      _load(setlistSongs[index]);
+      return;
+    }
+    _schedule(index, _nextDownbeat());
+    notifyListeners();
+  }
+
+  double _nextDownbeat() {
+    final origin = engine.barOrigin(), bpb = engine.beatsPerBar();
+    return origin + (((engine.beat() - origin) / bpb).floor() + 1) * bpb;
+  }
+
+  void _schedule(int index, double beat) {
+    final songs = setlistSongs;
+    if (index < songs.length) {
+      engine.scheduleSong(beat, songs[index].bpm, songs[index].beatsPerBar);
+    } else {
+      engine.scheduleSong(beat, 0, engine.beatsPerBar()); // end of the setlist
+    }
+    _changeBeat = beat;
+    _changeIndex = index;
+  }
+
+  void _setlistTick() {
+    final setlist = activeSetlist;
+    if (setlist == null || !canControl) return;
+    if (!engine.isPlaying()) {
+      // Stopped by the user or at the end; playing again restarts this song.
+      _changeBeat = null;
+      return;
+    }
+    final songs = setlistSongs;
+    final beat = engine.beat();
+    final change = _changeBeat;
+    if (change != null) {
+      if (beat >= change) {
+        _changeBeat = null;
+        setlistIndex = _changeIndex;
+        if (setlistIndex < songs.length) currentSong = songs[setlistIndex];
+        notifyListeners();
+      }
+      return;
+    }
+    // Wait until the song's first downbeat sets the bar origin.
+    if (!setlist.autoAdvance || engine.pendingBeatsPerBar() > 0) return;
+    if (setlistIndex >= songs.length) return;
+    final bars = songBars(songs[setlistIndex]);
+    if (bars == null) return; // no duration: the user moves on
+    var end = engine.barOrigin() + bars * engine.beatsPerBar();
+    // Already past the end (auto-advance turned on late): change soon instead
+    // of pivoting the tempo in the past.
+    if (end <= beat + 0.5) end = _nextDownbeat();
+    _schedule(setlistIndex + 1, end);
+    notifyListeners();
+  }
+
+  // ---- Sharing ----
+
   Future<void> setShareMode(ShareMode mode) async {
     engine.setLinkEnabled(mode != ShareMode.solo);
     shareMode = mode;
+    leaderSongName = null;
+    if (mode == ShareMode.follower && activeSetlist != null) stopSetlist();
     notifyListeners();
     _channel?.close();
     _channel = null;
     try {
       final channel = switch (mode) {
         ShareMode.solo => null,
-        ShareMode.leader => await ShareChannel.leader(engine),
-        ShareMode.follower => await ShareChannel.follower(engine),
+        ShareMode.leader => await ShareChannel.leader(
+          engine,
+          songName: () => currentSong?.name,
+        ),
+        ShareMode.follower => await ShareChannel.follower(
+          engine,
+          onSongName: (name) {
+            if (name == leaderSongName) return;
+            leaderSongName = name;
+            notifyListeners();
+          },
+        ),
       };
       // The user may have switched again while the socket was opening.
       if (shareMode == mode) {
@@ -99,6 +240,8 @@ class AppState extends ChangeNotifier {
       debugPrint('share channel unavailable: $e');
     }
   }
+
+  // ---- Practice tools and settings ----
 
   // Hidden tools must not change the click, but keep their settings.
   void _applyPractice() {

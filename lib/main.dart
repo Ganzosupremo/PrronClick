@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
 import 'metronome_page.dart';
+import 'setlists_page.dart';
 import 'settings_page.dart';
 import 'songs_page.dart';
 
@@ -76,9 +77,9 @@ class _HomePageState extends State<HomePage> {
               state: widget.state,
               onLoaded: () => setState(() => tab = 0),
             ),
-            const _ComingSoon(
-              icon: Icons.queue_music_outlined,
-              text: 'Aquí podrás armar setlists con tus canciones.',
+            SetlistsPage(
+              state: widget.state,
+              onStarted: () => setState(() => tab = 0),
             ),
           ],
         ),
@@ -100,33 +101,6 @@ class _HomePageState extends State<HomePage> {
             label: 'Setlists',
           ),
         ],
-      ),
-    );
-  }
-}
-
-// shortcut: empty tab until phase 4 (setlists).
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 16),
-            Text(text, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text('Próximamente', style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
       ),
     );
   }

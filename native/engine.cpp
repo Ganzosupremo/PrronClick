@@ -37,6 +37,12 @@ struct BarConfig {
   bool hasPending = false;
   int pendingBeatsPerBar = 4;
   double pendingOrigin = 0.0;
+  // Setlists: the pending change is a new song, so the tempo changes (or the
+  // music stops, if pendingBpm <= 0) on the same beat. Leader only: followers
+  // get the tempo through Link.
+  bool pendingSong = false;
+  double pendingBpm = 0.0;
+  unsigned songChangeId = 0;  // bumped per schedule so it is applied once
 
   void applyPendingAt(double beat) {
     if (hasPending && beat >= pendingOrigin) {
@@ -58,6 +64,7 @@ struct Engine {
 
   // Audio thread only.
   BarConfig audioConfig;
+  unsigned appliedSongChangeId = 0;
   double lastBeat = -1.0;
   double clickFreq = 0.0;
   long clickSample = 0;
@@ -114,7 +121,7 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
   }
 #endif
 
-  const auto state = e.link.captureAudioSessionState();
+  auto state = e.link.captureAudioSessionState();
   // Time at which the first frame of this buffer reaches the speaker.
   const auto hostTime =
       e.link.clock().micros() +
@@ -128,6 +135,23 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
   }
   auto& cfg = e.audioConfig;
   const double microsPerFrame = 1e6 / e.sampleRate;
+
+  // A song change due within this buffer: pivot the shared timeline on its
+  // first beat. Beats rendered so far stay put; the rest follow the new tempo.
+  if (state.isPlaying() && cfg.hasPending && cfg.pendingSong &&
+      cfg.songChangeId != e.appliedSongChangeId) {
+    const auto bufferEnd = hostTime + microseconds(std::llround(frames * microsPerFrame));
+    if (state.beatAtTime(bufferEnd, kQuantum) >= cfg.pendingOrigin) {
+      const auto at = state.timeAtBeat(cfg.pendingOrigin, kQuantum);
+      if (cfg.pendingBpm > 0.0) {
+        state.setTempo(cfg.pendingBpm, at);
+      } else {
+        state.setIsPlaying(false, at);
+      }
+      e.link.commitAudioSessionState(state);
+      e.appliedSongChangeId = cfg.songChangeId;
+    }
+  }
 
   for (ma_uint32 i = 0; i < frames; ++i) {
     if (state.isPlaying()) {
@@ -272,6 +296,19 @@ void pc_set_beats_per_bar(int beats) {
   c.pendingOrigin = r.origin + (pc::barAt(r, beat) + 1) * r.beatsPerBar;
   c.pendingBeatsPerBar = beats;
   c.hasPending = true;
+  c.pendingSong = false;
+}
+
+void pc_schedule_song(double beat, double bpm, int beatsPerBar) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto& c = g->config;
+  c.hasPending = true;
+  c.pendingOrigin = beat;
+  c.pendingBeatsPerBar = std::clamp(beatsPerBar, 1, 16);
+  c.pendingSong = true;
+  c.pendingBpm = bpm > 0.0 ? std::clamp(bpm, 20.0, 300.0) : 0.0;
+  ++c.songChangeId;
 }
 
 void pc_set_bar(int beatsPerBar, double origin, int nextBeatsPerBar, double nextOrigin) {
@@ -281,6 +318,7 @@ void pc_set_bar(int beatsPerBar, double origin, int nextBeatsPerBar, double next
   c.rules.beatsPerBar = std::clamp(beatsPerBar, 1, 16);
   c.rules.origin = origin;
   c.hasPending = nextBeatsPerBar > 0;
+  c.pendingSong = false;
   c.pendingBeatsPerBar = std::clamp(nextBeatsPerBar, 1, 16);
   c.pendingOrigin = nextOrigin;
 }

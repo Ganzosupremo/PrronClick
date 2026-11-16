@@ -40,7 +40,13 @@ class _MetronomePageState extends State<MetronomePage>
         beat = e.beat();
         beatsPerBar = e.beatsPerBar();
         origin = e.barOrigin();
-        pendingBeatsPerBar = e.pendingBeatsPerBar();
+        // A meter picked by hand starts on the next downbeat: show it right
+        // away. A setlist's next song is further off and is not shown.
+        final pending = e.pendingBeatsPerBar();
+        pendingBeatsPerBar =
+            pending > 0 && e.pendingOrigin() - beat <= beatsPerBar
+            ? pending
+            : 0;
       });
     })..start();
   }
@@ -77,6 +83,8 @@ class _MetronomePageState extends State<MetronomePage>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (state.activeSetlist != null)
+          _SetlistBar(state: state, beat: beat, beatsPerBar: beatsPerBar),
         if (state.shareMode != ShareMode.solo)
           Center(
             child: Chip(
@@ -91,10 +99,10 @@ class _MetronomePageState extends State<MetronomePage>
           ),
         SizedBox(
           height: 24,
-          child: state.currentSong == null
+          child: state.songName == null
               ? null
               : Text(
-                  state.currentSong!.name,
+                  state.songName!,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -197,6 +205,76 @@ class _MetronomePageState extends State<MetronomePage>
         const SizedBox(height: 8),
         _ToolsPanel(state: state, bar: playing ? bar : 0),
       ],
+    );
+  }
+}
+
+class _SetlistBar extends StatelessWidget {
+  const _SetlistBar({
+    required this.state,
+    required this.beat,
+    required this.beatsPerBar,
+  });
+
+  final AppState state;
+  final double beat;
+  final int beatsPerBar;
+
+  @override
+  Widget build(BuildContext context) {
+    final songs = state.setlistSongs;
+    final i = state.setlistIndex;
+    final change = state.changeBeat;
+    final next = i + 1 < songs.length ? songs[i + 1].name : null;
+    final String status;
+    if (change != null) {
+      final bars = ((change - beat) / beatsPerBar).ceil();
+      final when = bars <= 1 ? 'en el próximo compás' : 'en $bars compases';
+      status = next == null ? 'Termina $when' : 'Sigue "$next" $when';
+    } else {
+      status = next == null ? 'Última canción' : 'Siguiente: $next';
+    }
+    final small = Theme.of(context).textTheme.bodySmall;
+    return Card.outlined(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${state.activeSetlist!.name} · ${i + 1}/${songs.length}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    status,
+                    style: small,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Canción anterior',
+              onPressed: i > 0 ? () => state.goToSong(i - 1) : null,
+              icon: const Icon(Icons.skip_previous),
+            ),
+            IconButton(
+              tooltip: 'Canción siguiente',
+              onPressed: next != null ? () => state.goToSong(i + 1) : null,
+              icon: const Icon(Icons.skip_next),
+            ),
+            IconButton(
+              tooltip: 'Salir del setlist',
+              onPressed: state.stopSetlist,
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
