@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'library.dart';
 import 'lyrics_view.dart';
 import 'meter_picker.dart';
 import 'song.dart';
@@ -97,7 +98,14 @@ class _MetronomePageState extends State<MetronomePage>
         ? pendingBeatsPerBar
         : beatsPerBar;
     final group = accentGroup(beatsPerBar, info.beatUnit);
-    final aboutSong = [?info.key, ?info.note].join(' · ');
+    final aboutSong = [?info.section, ?info.key, ?info.note].join(' · ');
+    final sectionChange = info.sectionChange;
+    String? comingUp;
+    if (sectionChange != null && sectionChange > beat) {
+      final bars = ((sectionChange - beat) / beatsPerBar).ceil();
+      final when = bars <= 1 ? 'en el próximo compás' : 'en $bars compases';
+      comingUp = 'Sigue: ${info.nextSection} $when';
+    }
     final currentBeat = playing && beat >= 0
         ? (beat - origin).floor() % beatsPerBar
         : -1;
@@ -110,7 +118,24 @@ class _MetronomePageState extends State<MetronomePage>
         state.gapTrainer &&
         bar % (state.gapPlay + state.gapMute) >= state.gapPlay;
 
-    return ListView(
+    // Screen flash: bright on the beat, gone a third of a beat later. Above
+    // 180 BPM only the bar's first beat flashes: more than three flashes a
+    // second can trigger seizures.
+    final lib = state.library;
+    final first = currentBeat == 0;
+    final intoBeat = (beat - origin) - (beat - origin).floorToDouble();
+    final flashing =
+        currentBeat >= 0 &&
+        beat >= origin &&
+        !paused &&
+        !muted &&
+        (counting ? lib.flashCountIn : lib.flash) &&
+        (first || tempo <= 180);
+    final flash = flashing
+        ? (1 - intoBeat * 3).clamp(0.0, 1.0) * (first ? 0.5 : 0.3)
+        : 0.0;
+
+    final page = ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (state.showInfo.setlist != null)
@@ -145,6 +170,13 @@ class _MetronomePageState extends State<MetronomePage>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: scheme.tertiary),
+          ),
+        if (comingUp != null)
+          Text(
+            comingUp,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         // Long bars (12/8, 16/4) shrink to fit the width.
         FittedBox(
@@ -262,6 +294,21 @@ class _MetronomePageState extends State<MetronomePage>
           ),
       ],
     );
+    return Stack(
+      children: [
+        page,
+        if (flash > 0)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(
+                color: (first ? scheme.primary : scheme.tertiary).withValues(
+                  alpha: flash,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -371,6 +418,52 @@ class _ToolsPanel extends StatelessWidget {
             selected: {state.shareMode},
             onSelectionChanged: (s) => state.setShareMode(s.first),
           ),
+          const Divider(height: 32),
+          const Text('Mi click'),
+          Text(
+            'Solo en este dispositivo: cada músico pone el suyo.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          const Text('Subdivisión'),
+          const SizedBox(height: 8),
+          SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 1, label: Text('No')),
+              ButtonSegment(value: 2, label: Text('2')),
+              ButtonSegment(value: 3, label: Text('3')),
+              ButtonSegment(value: 4, label: Text('4')),
+            ],
+            selected: {state.library.subdivision},
+            onSelectionChanged: (s) => state.setClick(subdivision: s.first),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text('Volumen'),
+              Expanded(
+                child: Slider(
+                  value: state.library.volume,
+                  onChanged: (v) => state.setClick(volume: v),
+                  onChangeEnd: (_) => state.saveLibrary(),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Expanded(child: Text('Sonido')),
+              DropdownButton<int>(
+                value: state.library.sound,
+                items: [
+                  for (final (i, name) in clickSounds.indexed)
+                    DropdownMenuItem(value: i, child: Text(name)),
+                ],
+                onChanged: (n) => state.setClick(sound: n),
+              ),
+            ],
+          ),
           if (state.library.practiceTools) ...[
             const Divider(height: 32),
             Row(
@@ -415,6 +508,28 @@ class _ToolsPanel extends StatelessWidget {
                 label: 'Compases en silencio',
                 value: state.gapMute,
                 onChanged: (n) => state.setGapTrainer(mute: n),
+              ),
+            ],
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Rampa de tempo'),
+              subtitle: const Text(
+                'El tempo sube cada pocos compases. Al parar vuelve al '
+                'inicial.',
+              ),
+              value: state.library.ramp,
+              onChanged: (v) => state.setRamp(enabled: v),
+            ),
+            if (state.library.ramp) ...[
+              _BarsRow(
+                label: 'Subir (BPM)',
+                value: state.library.rampBpm,
+                onChanged: (n) => state.setRamp(bpm: n),
+              ),
+              _BarsRow(
+                label: 'Cada (compases)',
+                value: state.library.rampBars,
+                onChanged: (n) => state.setRamp(bars: n),
               ),
             ],
           ],

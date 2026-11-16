@@ -8,6 +8,46 @@ const beatUnits = [2, 4, 8, 16];
 int accentGroup(int beats, int unit) =>
     unit == 8 && beats > 3 && beats % 3 == 0 ? 3 : 0;
 
+/// A stretch of a song with its own length and, if set, tempo and meter.
+class Section {
+  Section({
+    required this.name,
+    required this.bars,
+    this.bpm,
+    this.beatsPerBar,
+    this.beatUnit,
+  });
+
+  /// Returns null for an entry that is not a usable section.
+  static Section? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final name = json['name'], bars = json['bars'], bpm = json['bpm'];
+    final bpb = json['beatsPerBar'], unit = json['beatUnit'];
+    if (name is! String || bars is! int || bars < 1) return null;
+    return Section(
+      name: name,
+      bars: bars.clamp(1, 999),
+      bpm: bpm is num ? bpm.toDouble().clamp(20, 300) : null,
+      beatsPerBar: bpb is int ? bpb.clamp(1, 16) : null,
+      beatUnit: bpb is int && beatUnits.contains(unit) ? unit as int : null,
+    );
+  }
+
+  String name;
+  int bars;
+  double? bpm; // null = the song's
+  int? beatsPerBar; // null = the song's meter
+  int? beatUnit; // with beatsPerBar; null = x/4
+
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'bars': bars,
+    'bpm': ?bpm,
+    'beatsPerBar': ?beatsPerBar,
+    if (beatsPerBar != null) 'beatUnit': beatUnit ?? 4,
+  };
+}
+
 class Song {
   Song({
     required this.id,
@@ -19,7 +59,8 @@ class Song {
     this.key,
     this.note,
     this.lyrics,
-  });
+    List<Section>? sections,
+  }) : sections = sections ?? [];
 
   /// Returns null for an entry that is not a usable song (e.g. hand-edited).
   static Song? fromJson(Object? json) {
@@ -41,6 +82,10 @@ class Song {
       key: text(json['key']),
       note: text(json['note']),
       lyrics: text(json['lyrics']),
+      sections: [
+        if (json['sections'] case final List list)
+          for (final s in list) ?Section.fromJson(s),
+      ],
     );
   }
 
@@ -57,7 +102,29 @@ class Song {
   String? note; // one line for the band, e.g. "drums start alone"
   String? lyrics; // ChordPro body: lyrics with [chords] and {comment: ...}
 
+  /// Played in order, each for its bars; empty = one stretch, the whole song.
+  List<Section> sections;
+
   String get meter => '$beatsPerBar/$beatUnit';
+
+  // Tempo and meter of section [i]: its own, or the song's.
+  double bpmAt(int i) => sections.elementAtOrNull(i)?.bpm ?? bpm;
+  int beatsAt(int i) => sections.elementAtOrNull(i)?.beatsPerBar ?? beatsPerBar;
+  int unitAt(int i) {
+    final s = sections.elementAtOrNull(i);
+    return s?.beatsPerBar == null ? beatUnit : s!.beatUnit ?? 4;
+  }
+
+  /// How long the song lasts: what its sections add up to, else the
+  /// duration typed in. Null = no set length.
+  int? get lengthSeconds {
+    if (sections.isEmpty) return durationSeconds;
+    var seconds = 0.0;
+    for (final (i, s) in sections.indexed) {
+      seconds += s.bars * beatsAt(i) * 60 / bpmAt(i);
+    }
+    return seconds.round();
+  }
 
   /// Takes everything but the id from [other] (an imported copy).
   void copyFrom(Song other) {
@@ -69,6 +136,7 @@ class Song {
     key = other.key;
     note = other.note;
     lyrics = other.lyrics;
+    sections = [for (final s in other.sections) Section.fromJson(s.toJson())!];
   }
 
   Map<String, Object?> toJson() => {
@@ -81,10 +149,11 @@ class Song {
     'key': ?key,
     'note': ?note,
     'lyrics': ?lyrics,
+    if (sections.isNotEmpty) 'sections': [for (final s in sections) s.toJson()],
   };
 
   String get summary {
-    final d = durationSeconds;
+    final d = lengthSeconds;
     return [
       '${bpm.round()} BPM',
       meter,

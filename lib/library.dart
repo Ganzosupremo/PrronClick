@@ -5,6 +5,9 @@ import 'dart:io';
 import 'setlist.dart';
 import 'song.dart';
 
+/// The engine's click timbres, by index (see clickWave in native/engine.cpp).
+const clickSounds = ['Pitido', 'Madera', 'Digital'];
+
 /// Everything the app saves: settings, songs and setlists.
 class Library {
   Library({
@@ -15,6 +18,14 @@ class Library {
     this.gapPlay = 4,
     this.gapMute = 2,
     this.countInBars = 0,
+    this.subdivision = 1,
+    this.volume = 1,
+    this.sound = 0,
+    this.flash = false,
+    this.flashCountIn = false,
+    this.ramp = false,
+    this.rampBpm = 5,
+    this.rampBars = 4,
     List<Song>? songs,
     List<Setlist>? setlists,
   }) : songs = songs ?? [],
@@ -37,6 +48,23 @@ class Library {
         final int n when n >= 0 && n <= 2 => n,
         _ => 0,
       },
+      subdivision: switch (settings['subdivision']) {
+        final int n when n >= 1 && n <= 4 => n,
+        _ => 1,
+      },
+      volume: switch (settings['volume']) {
+        final num v when v >= 0 && v <= 1 => v.toDouble(),
+        _ => 1,
+      },
+      sound: switch (settings['sound']) {
+        final int n when n >= 0 && n < clickSounds.length => n,
+        _ => 0,
+      },
+      flash: settings['flash'] == true,
+      flashCountIn: settings['flashCountIn'] == true,
+      ramp: settings['ramp'] == true,
+      rampBpm: bars(settings['rampBpm'], 5),
+      rampBars: bars(settings['rampBars'], 4),
       songs: [
         for (final s in (json['songs'] as List?) ?? const []) ?Song.fromJson(s),
       ],
@@ -54,6 +82,19 @@ class Library {
   int gapPlay;
   int gapMute;
   int countInBars; // 0, 1 or 2
+
+  // This device's click (not shared with the band).
+  int subdivision; // clicks per beat, 1 = none
+  double volume; // 0..1
+  int sound; // index into clickSounds
+
+  bool flash; // the screen flashes on each beat
+  bool flashCountIn; // ...and during the count-in
+
+  // Tempo ramp (practice tool): +rampBpm every rampBars bars.
+  bool ramp;
+  int rampBpm;
+  int rampBars;
   final List<Song> songs;
   final List<Setlist> setlists;
 
@@ -118,6 +159,14 @@ class Library {
       'gapPlay': gapPlay,
       'gapMute': gapMute,
       'countInBars': countInBars,
+      'subdivision': subdivision,
+      'volume': volume,
+      'sound': sound,
+      'flash': flash,
+      'flashCountIn': flashCountIn,
+      'ramp': ramp,
+      'rampBpm': rampBpm,
+      'rampBars': rampBars,
     },
     'songs': [for (final s in songs) s.toJson()],
     'setlists': [for (final s in setlists) s.toJson()],

@@ -16,6 +16,7 @@ struct Rules {
   int gapMute = 0;       // ...then bars of silence; 0 = off
   double muteUntil = 0;  // silent from origin up to this beat (setlist pause)
   double countUntil = 0; // count-in: after the pause, another pitch up to here
+  int subdivision = 1;   // softer clicks per beat on this device; 1 = none
 };
 
 inline long floorDiv(double x) { return static_cast<long>(std::floor(x)); }
@@ -58,6 +59,14 @@ inline bool isSubAccent(const Rules& r, double coord) {
 
 inline bool crosses(const Rules& r, double prev, double beat) {
   return std::floor(clickCoord(r, beat)) > std::floor(clickCoord(r, prev));
+}
+
+// A subdivision click: the coordinate crosses a fraction of a beat, not a beat.
+inline bool crossesDivision(const Rules& r, double prev, double beat) {
+  if (r.subdivision <= 1) return false;
+  const double a = clickCoord(r, prev), b = clickCoord(r, beat);
+  return std::floor(b) == std::floor(a) &&
+         std::floor(b * r.subdivision) > std::floor(a * r.subdivision);
 }
 
 }  // namespace pc

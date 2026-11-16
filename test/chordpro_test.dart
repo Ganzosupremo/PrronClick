@@ -33,7 +33,18 @@ void main() {
   });
 
   test('writes what it reads, several songs per file', () {
-    final other = Song(id: 'x', name: 'Vals', bpm: 140, beatsPerBar: 3);
+    final other = Song(
+      id: 'x',
+      name: 'Vals',
+      bpm: 140,
+      beatsPerBar: 3,
+      sections: [
+        Section(name: 'Intro; lenta', bars: 4),
+        Section(name: 'Coro', bars: 8, bpm: 150, beatsPerBar: 6, beatUnit: 8),
+        Section(name: 'Final', bars: 2, bpm: 70),
+      ],
+    );
+    other.sections[0].name = 'Intro, lenta'; // ';' separates the fields
     final first = parseChordPro(bikina).single;
     final back = parseChordPro(toChordPro([first, other]));
     expect(back, hasLength(2));
@@ -81,6 +92,29 @@ void main() {
     expect(decodeText(Uint8List(0)), '');
     final song = parseChordPro(decodeText(utf16(Endian.little))).single;
     expect((song.name, song.lyrics), ('Canción', 'ño'));
+  });
+
+  test('sections: tempo and meter fall back to the song; length adds up', () {
+    final song = parseChordPro(
+      '{t: S}\n{tempo: 120}\n{time: 4/4}\n{duration: 9:00}\n'
+      '{meta: seccion Verso; 8}\n{meta: Sección Coro; 4; 6/8; 180}\n'
+      '{meta: seccion Rota}\n{meta: seccion ; 4}',
+    ).single;
+    expect([for (final s in song.sections) s.name], ['Verso', 'Coro']);
+    expect((song.bpmAt(0), song.beatsAt(0), song.unitAt(0)), (120, 4, 4));
+    expect((song.bpmAt(1), song.beatsAt(1), song.unitAt(1)), (180, 6, 8));
+    expect((song.bpmAt(5), song.beatsAt(5), song.unitAt(5)), (120, 4, 4));
+    // 32 beats at 120 + 24 at 180, not the 9:00 typed in.
+    expect(song.lengthSeconds, 24);
+    expect(song.summary, contains('0:24'));
+    // What was not a section stays in the text.
+    expect(song.lyrics, '{meta: seccion Rota}\n{meta: seccion ; 4}');
+    // A copy does not share its sections with the original.
+    final copy = Song(id: 'c', name: '', bpm: 1, beatsPerBar: 1)
+      ..copyFrom(song);
+    copy.sections[0].bars = 99;
+    expect(song.sections[0].bars, 8);
+    expect(Song.fromJson(song.toJson())!.toJson(), song.toJson());
   });
 
   test('importing a song again updates ours and keeps its id', () {

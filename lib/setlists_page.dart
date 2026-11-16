@@ -82,7 +82,7 @@ class SetlistsPage extends StatelessWidget {
 
   static String _summary(List<Song> songs) {
     final n = songs.length;
-    final secs = songs.fold(0, (t, s) => t + (s.durationSeconds ?? 0));
+    final secs = songs.fold(0, (t, s) => t + (s.lengthSeconds ?? 0));
     return [
       n == 1 ? '1 canción' : '$n canciones',
       if (secs > 0) formatDuration(secs),
@@ -352,7 +352,7 @@ class SetlistPage extends StatelessWidget {
                       ),
                       title: Text('${i + 1}. ${song.name}'),
                       subtitle: Text(
-                        song.durationSeconds == null && setlist.autoAdvance
+                        song.lengthSeconds == null && setlist.autoAdvance
                             ? '${song.summary} · sin duración: pasa a mano'
                             : song.summary,
                       ),

@@ -42,6 +42,10 @@ constexpr double kBeatHz = 1000.0;
 constexpr double kCountAccentHz = 1200.0;
 constexpr double kCountSubAccentHz = 975.0;
 constexpr double kCountHz = 750.0;
+// Subdivisions: lower and half as loud, so the beat stays on top.
+constexpr double kDivisionHz = 800.0;
+constexpr double kCountDivisionHz = 600.0;
+constexpr double kDivisionGain = 0.5;
 // Link's own bar/phase is unused: peers' beat numbers differ by an integer, so
 // bars come from our origin (shared by the leader) and Link only aligns beats.
 constexpr double kQuantum = 1.0;
@@ -82,6 +86,8 @@ struct Engine {
   BarConfig config;  // guarded by configMutex
   std::atomic<double> extraLatencyMicros{0.0};
   std::atomic<double> outputLatencyMicros{0.0};
+  std::atomic<double> volume{1.0};
+  std::atomic<int> sound{0};  // timbre, see clickWave
 
   // Latency calibration: while on, every beat plays pc::ownClick and the mic
   // is recorded into `recording` (allocated up front: the capture callback
@@ -100,6 +106,8 @@ struct Engine {
   long clickSample = 0;
   long clickLength = 0;
   bool clickOwn = false;
+  double clickGain = 1.0;
+  int clickSound = 0;
 };
 
 // Raw pointer on purpose: a static destructor would tear down the audio and Link
@@ -172,6 +180,20 @@ void refreshOutputLatency(Engine& e) {
 }
 #endif
 
+// One click, t seconds in. Every timbre keeps the pitch: a follower's
+// calibration listens for the leader at 1000/1600 Hz.
+double clickWave(int sound, double hz, double t) {
+  const double s = std::sin(2.0 * kPi * hz * t);
+  switch (sound) {
+    case 1:  // wood: gone in a few ms
+      return s * std::exp(-t * 600.0);
+    case 2:  // digital: a square wave
+      return (s >= 0.0 ? 0.5 : -0.5) * std::exp(-t * 250.0);
+    default:  // beep
+      return s * std::exp(-t * 150.0);
+  }
+}
+
 void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
   auto& e = *static_cast<Engine*>(device->pUserData);
   auto* out = static_cast<float*>(output);
@@ -200,6 +222,7 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
   }
   auto& cfg = e.audioConfig;
   const double microsPerFrame = 1e6 / e.sampleRate;
+  const double volume = e.volume;
 
   // A song change due within this buffer: pivot the shared timeline on its
   // first beat. Beats rendered so far stay put; the rest follow the new tempo.
@@ -230,10 +253,22 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
           e.clickSample = 0;
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
         }
-      } else if (beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat)) {
+      } else if (const bool onBeat = beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat);
+                 onBeat || (beat >= 0.0 && pc::crossesDivision(cfg.rules, e.lastBeat, beat))) {
         const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
-        if (!pc::isMuted(cfg.rules, coord)) {
+        if (pc::isMuted(cfg.rules, coord)) {
+          // silent bar
+        } else if (!onBeat) {
           e.clickOwn = false;
+          e.clickFreq = pc::isCount(cfg.rules, coord) ? kCountDivisionHz : kDivisionHz;
+          e.clickGain = kDivisionGain;
+          e.clickSound = e.sound;
+          e.clickSample = 0;
+          e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
+        } else {
+          e.clickOwn = false;
+          e.clickGain = 1.0;
+          e.clickSound = e.sound;
           // 0 = accent, 1 = lighter accent, 2 = plain beat.
           const int kind = pc::isAccent(cfg.rules, coord) ? 0
                            : pc::isSubAccent(cfg.rules, coord) ? 1 : 2;
@@ -252,9 +287,9 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
     float sample = 0.0f;
     if (e.clickSample < e.clickLength) {
       const double t = e.clickSample / e.sampleRate;
-      sample = static_cast<float>(e.clickOwn ? pc::ownClick(t)
-                                             : 0.6 * std::sin(2.0 * kPi * e.clickFreq * t) *
-                                                   std::exp(-t * 150.0));
+      sample = static_cast<float>(
+          e.clickOwn ? pc::ownClick(t)
+                     : 0.6 * e.clickGain * volume * clickWave(e.clickSound, e.clickFreq, t));
       ++e.clickSample;
     }
     for (ma_uint32 c = 0; c < channels; ++c) {
@@ -399,7 +434,8 @@ void pc_set_beats_per_bar(int beats) {
   c.pendingSong = false;
 }
 
-void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars) {
+// A tempo and meter change on `beat`; a new song adds its pause and count-in.
+static void schedule(double beat, double bpm, int beatsPerBar, int pauseBars, bool newSong) {
   if (!g) return;
   std::lock_guard<std::mutex> lock(g->configMutex);
   auto& c = g->config;
@@ -407,10 +443,18 @@ void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars) {
   c.pendingOrigin = beat;
   c.pendingBeatsPerBar = std::clamp(beatsPerBar, 1, 16);
   c.pendingMuteBeats = std::max(0, pauseBars) * c.pendingBeatsPerBar;
-  c.pendingCountBeats = bpm > 0.0 ? c.countBars * c.pendingBeatsPerBar : 0.0;
+  c.pendingCountBeats = newSong && bpm > 0.0 ? c.countBars * c.pendingBeatsPerBar : 0.0;
   c.pendingSong = true;
   c.pendingBpm = bpm > 0.0 ? std::clamp(bpm, 20.0, 300.0) : 0.0;
   ++c.songChangeId;
+}
+
+void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars) {
+  schedule(beat, bpm, beatsPerBar, pauseBars, true);
+}
+
+void pc_schedule_section(double beat, double bpm, int beatsPerBar) {
+  if (bpm > 0.0) schedule(beat, bpm, beatsPerBar, 0, false);
 }
 
 void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUntil,
@@ -467,6 +511,20 @@ void pc_set_beat_unit(int unit) {
   if (!g) return;
   std::lock_guard<std::mutex> lock(g->configMutex);
   g->config.rules.beatUnit = unit;
+}
+
+void pc_set_subdivision(int clicksPerBeat) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.rules.subdivision = std::clamp(clicksPerBeat, 1, 4);
+}
+
+void pc_set_volume(double volume) {
+  if (g) g->volume = std::clamp(volume, 0.0, 1.0);
+}
+
+void pc_set_sound(int sound) {
+  if (g) g->sound = sound;
 }
 
 void pc_set_displacement(int barsPerStep) {

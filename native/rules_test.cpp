@@ -124,6 +124,20 @@ int main() {
     r.beatsPerBar = 3;
     CHECK(!isSubAccent(r, 5));
   }
+  {  // Triplet subdivision: two extra clicks inside each beat, none on it.
+    Rules r;
+    r.subdivision = 3;
+    const double step = 1.0 / 4800;
+    std::vector<double> at;
+    for (double b = 0, prev = -step; b < 4; prev = b, b += step) {
+      if (crossesDivision(r, prev, b)) at.push_back(b);
+      CHECK(!(crossesDivision(r, prev, b) && crosses(r, prev, b)));
+    }
+    CHECK(at.size() == 8);
+    CHECK(near(at[0], 1.0 / 3) && near(at[1], 2.0 / 3) && near(at[2], 4.0 / 3));
+    r.subdivision = 1;
+    CHECK(!crossesDivision(r, 0.4, 0.6));
+  }
   {  // Negative beats (count-in before origin) still work.
     Rules r;
     CHECK(barAt(r, -0.5) == -1);

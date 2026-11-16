@@ -18,10 +18,15 @@ enum ShareMode { solo, leader, follower }
 /// App-wide state shared by every tab. The engine's live values (tempo, beat,
 /// peers) are not mirrored here: the metronome page polls them every frame.
 class AppState extends ChangeNotifier {
-  AppState._(this.engine, this.store, this.library) : audioOk = engine.init() {
+  /// [load] is the app's way in; tests bring their own engine and store.
+  AppState.using(this.engine, this.store, this.library)
+    : audioOk = engine.init() {
     engine.setExtraLatencyMs(library.extraLatencyMs);
     _applyCountIn();
     _applyPractice();
+    _applyClick();
+    // Sections, setlists and the tempo ramp all watch the beat go by.
+    _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     // Playing can start or stop from many places (button, Link, the leader, a
     // setlist's end), so poll it instead of hooking each one.
     if (Platform.isAndroid) {
@@ -33,6 +38,14 @@ class AppState extends ChangeNotifier {
   }
 
   static const _background = MethodChannel('prronclick/background');
+  late final Timer _ticker;
+
+  /// Stops the timers and the engine (tests; the app lives until it exits).
+  void close() {
+    _ticker.cancel();
+    engine.shutdown();
+  }
+
   bool _alive = false;
 
   /// The notification's Parar. A follower cannot stop the band (Link would
@@ -58,7 +71,7 @@ class AppState extends ChangeNotifier {
     final dir = await getApplicationSupportDirectory();
     await dir.create(recursive: true);
     final store = LibraryStore(File('${dir.path}/library.json'));
-    return AppState._(Engine(), store, await store.load());
+    return AppState.using(Engine(), store, await store.load());
   }
 
   final Engine engine;
@@ -109,30 +122,33 @@ class AppState extends ChangeNotifier {
     if (shareMode == ShareMode.follower) return leaderInfo;
     final setlist = activeSetlist;
     final song = currentSong;
-    if (setlist == null) {
-      return ShowInfo(
-        song: song?.name,
-        key: song?.key,
-        note: song?.note,
-        beatUnit: beatUnit,
-      );
-    }
+    final sections = song?.sections ?? const <Section>[];
+    final next = _changeBeat == null ? null : _changeSection;
     final songs = setlistSongs, i = setlistIndex;
     return ShowInfo(
       song: song?.name,
       key: song?.key,
       note: song?.note,
       beatUnit: beatUnit,
-      setlist: setlist.name,
-      position: i + 1,
-      total: songs.length,
+      section: sections.elementAtOrNull(sectionIndex)?.name,
+      nextSection: next == null ? null : sections.elementAtOrNull(next)?.name,
+      sectionChange: next == null ? null : _changeBeat,
+      setlist: setlist?.name,
+      position: setlist == null ? 0 : i + 1,
+      total: setlist == null ? 0 : songs.length,
       next: i + 1 < songs.length ? songs[i + 1].name : null,
-      changeBeat: _changeBeat,
+      // A section change is not the next song.
+      changeBeat: next == null ? _changeBeat : null,
     );
   }
 
   void saveSong(Song song) {
     if (!library.songs.contains(song)) library.songs.add(song);
+    // Its sections may have changed under us: start it over.
+    if (song == currentSong && canControl) {
+      _forgetChange();
+      _load(song);
+    }
     _libraryChanged();
   }
 
@@ -157,6 +173,7 @@ class AppState extends ChangeNotifier {
   /// Loads a single song, leaving any running setlist.
   void loadSong(Song song) {
     if (activeSetlist != null) stopSetlist();
+    _forgetChange();
     _load(song);
   }
 
@@ -166,18 +183,20 @@ class AppState extends ChangeNotifier {
     beatUnit = unit;
     notifyListeners();
     engine.setBeatsPerBar(beats);
-    if (activeSetlist != null && _changeBeat != null && engine.isPlaying()) {
+    if (_changeBeat != null && engine.isPlaying()) {
       _resumeEnd = _changeBeat;
       _changeBeat = null;
+      _changeSection = null;
     }
   }
 
-  /// Sets tempo and meter from the song. While playing, the meter switches on
-  /// the next downbeat.
+  /// Sets tempo and meter from the song (its first section). While playing,
+  /// the meter switches on the next downbeat.
   void _load(Song song) {
-    engine.setTempo(song.bpm);
-    engine.setBeatsPerBar(song.beatsPerBar);
-    beatUnit = song.beatUnit;
+    sectionIndex = 0;
+    engine.setTempo(song.bpmAt(0));
+    engine.setBeatsPerBar(song.beatsAt(0));
+    beatUnit = song.unitAt(0);
     currentSong = song;
     notifyListeners();
   }
@@ -222,12 +241,22 @@ class AppState extends ChangeNotifier {
   Setlist? activeSetlist;
   int setlistIndex = 0;
 
-  /// Beat where the next song (or the end) is scheduled; null if none yet.
+  /// Which of the current song's sections is playing.
+  int sectionIndex = 0;
+
+  /// Beat where the next song, section or the end is scheduled; null if none
+  /// yet.
   double? get changeBeat => _changeBeat;
   double? _changeBeat;
-  int _changeIndex = 0;
-  double? _resumeEnd; // song end to keep after a manual meter change
-  Timer? _setlistTimer;
+  int _changeIndex = 0; // the song it brings...
+  int? _changeSection; // ...or, if set, the section of the current song
+  double? _resumeEnd; // end to keep after a manual meter change
+
+  void _forgetChange() {
+    _changeBeat = null;
+    _changeSection = null;
+    _resumeEnd = null;
+  }
 
   List<Song> get setlistSongs =>
       activeSetlist?.songsFrom(library.songs) ?? const [];
@@ -237,22 +266,14 @@ class AppState extends ChangeNotifier {
     if (index >= songs.length) return;
     activeSetlist = setlist;
     setlistIndex = index;
-    _changeBeat = null;
-    _resumeEnd = null;
+    _forgetChange();
     _applyCountIn();
     _load(songs[index]);
-    _setlistTimer ??= Timer.periodic(
-      const Duration(milliseconds: 100),
-      (_) => _setlistTick(),
-    );
   }
 
   void stopSetlist() {
     activeSetlist = null;
-    _changeBeat = null;
-    _resumeEnd = null;
-    _setlistTimer?.cancel();
-    _setlistTimer = null;
+    _forgetChange();
     _applyCountIn();
     notifyListeners();
   }
@@ -260,10 +281,9 @@ class AppState extends ChangeNotifier {
   /// Jumps to song [index]: now if stopped, else on the next downbeat.
   void goToSong(int index) {
     if (index < 0 || index >= setlistSongs.length) return;
-    _resumeEnd = null;
+    _forgetChange();
     if (!engine.isPlaying()) {
       setlistIndex = index;
-      _changeBeat = null;
       _load(setlistSongs[index]);
       return;
     }
@@ -280,47 +300,68 @@ class AppState extends ChangeNotifier {
     final songs = setlistSongs;
     if (index < songs.length) {
       final song = songs[index];
-      engine.scheduleSong(beat, song.bpm, song.beatsPerBar, pauseBars);
+      engine.scheduleSong(beat, song.bpmAt(0), song.beatsAt(0), pauseBars);
     } else {
       engine.scheduleSong(beat, 0, engine.beatsPerBar(), 0); // end of setlist
     }
     _changeBeat = beat;
     _changeIndex = index;
+    _changeSection = null;
   }
 
-  void _setlistTick() {
+  /// Where the stretch playing now (song or section) began: after its pause
+  /// and count-in, if any.
+  double _stretchStart() =>
+      [engine.barOrigin(), engine.muteUntil(), engine.countUntil()].reduce(max);
+
+  void _tick() {
+    _rampTick();
+    final song = currentSong;
+    if (song == null || !canControl) return;
     final setlist = activeSetlist;
-    if (setlist == null || !canControl) return;
+    final sections = song.sections;
+    if (setlist == null && sections.isEmpty) return;
     if (!engine.isPlaying()) {
       // Stopped by the user or at the end; playing again restarts this song.
-      _changeBeat = null;
-      _resumeEnd = null;
+      _forgetChange();
+      if (sectionIndex != 0) _load(song);
       return;
     }
-    final songs = setlistSongs;
     final beat = engine.beat();
     final change = _changeBeat;
     if (change != null) {
-      if (beat >= change) {
-        _changeBeat = null;
+      if (beat < change) return;
+      _changeBeat = null;
+      if (_changeSection case final section?) {
+        _changeSection = null;
+        sectionIndex = section;
+        beatUnit = song.unitAt(section);
+      } else {
+        final songs = setlistSongs;
         setlistIndex = _changeIndex;
+        sectionIndex = 0;
         if (setlistIndex < songs.length) {
           currentSong = songs[setlistIndex];
-          beatUnit = currentSong!.beatUnit;
+          beatUnit = currentSong!.unitAt(0);
         }
-        notifyListeners();
       }
+      notifyListeners();
       return;
     }
-    // Wait until the song's first downbeat sets the bar origin.
-    if (!setlist.autoAdvance || engine.pendingBeatsPerBar() > 0) return;
-    if (setlistIndex >= songs.length) return;
-    final bars = songBars(songs[setlistIndex]);
+    // Wait until the stretch's first downbeat sets the bar origin.
+    if (engine.pendingBeatsPerBar() > 0) return;
+    final lastSection = sectionIndex + 1 >= sections.length;
+    final advance =
+        setlist != null &&
+        setlist.autoAdvance &&
+        setlistIndex < setlistSongs.length;
+    if (lastSection && !advance) return; // nothing follows: keep playing
+    final bars = sections.isEmpty
+        ? songBars(song)
+        : sections[min(sectionIndex, sections.length - 1)].bars;
     if (bars == null) return; // no duration: the user moves on
     final origin = engine.barOrigin(), bpb = engine.beatsPerBar();
-    // The song starts after its pause and count-in, if any.
-    final start = [origin, engine.muteUntil(), engine.countUntil()].reduce(max);
-    var end = start + bars * bpb;
+    var end = _stretchStart() + bars * bpb;
     if (_resumeEnd case final kept?) {
       end = origin + ((kept - origin) / bpb).ceil() * bpb;
       _resumeEnd = null;
@@ -328,8 +369,47 @@ class AppState extends ChangeNotifier {
     // Already past the end (auto-advance turned on late): change soon instead
     // of pivoting the tempo in the past.
     if (end <= beat + 0.5) end = _nextDownbeat();
-    _schedule(setlistIndex + 1, end, pauseBars: setlist.pauseBars);
+    if (lastSection) {
+      _schedule(setlistIndex + 1, end, pauseBars: setlist!.pauseBars);
+    } else {
+      final next = sectionIndex + 1;
+      engine.scheduleSection(end, song.bpmAt(next), song.beatsAt(next));
+      _changeBeat = end;
+      _changeSection = next;
+    }
     notifyListeners();
+  }
+
+  // ---- Tempo ramp ----
+
+  double? _rampStart; // start of the stretch being ramped
+  double? _rampBase; // its tempo before the ramp, to go back to
+  int _rampStep = 0;
+
+  /// Practice tool: every rampBars bars the tempo goes up rampBpm. A new song
+  /// or section starts over from its own tempo; stopping goes back to it.
+  // shortcut: the step lands up to one tick (100 ms) after the downbeat, not
+  // on it; schedule it in the engine if that is ever heard.
+  void _rampTick() {
+    final on = library.practiceTools && library.ramp && canControl;
+    if (!on || !engine.isPlaying()) {
+      if (_rampBase case final base? when canControl) engine.setTempo(base);
+      _rampBase = _rampStart = null;
+      return;
+    }
+    final start = _stretchStart();
+    final bars = ((engine.beat() - start) / engine.beatsPerBar()).floor();
+    if (bars < 0) return; // still in the pause or count-in
+    final step = bars ~/ library.rampBars;
+    if (start != _rampStart) {
+      _rampStart = start;
+      _rampBase = engine.tempo();
+      _rampStep = step;
+    } else if (step > _rampStep) {
+      final up = library.rampBpm * (step - _rampStep);
+      engine.setTempo((engine.tempo() + up).clamp(20, 300));
+      _rampStep = step;
+    }
   }
 
   // ---- Sharing ----
@@ -410,6 +490,39 @@ class AppState extends ChangeNotifier {
   void setCountIn(int bars) {
     library.countInBars = bars;
     _applyCountIn();
+    notifyListeners();
+    store.save(library);
+  }
+
+  void setRamp({bool? enabled, int? bpm, int? bars}) {
+    library.ramp = enabled ?? library.ramp;
+    library.rampBpm = bpm ?? library.rampBpm;
+    library.rampBars = bars ?? library.rampBars;
+    _rampStart = null; // count the bars again with the new numbers
+    notifyListeners();
+    store.save(library);
+  }
+
+  void _applyClick() {
+    engine.setSubdivision(library.subdivision);
+    engine.setVolume(library.volume);
+    engine.setSound(library.sound);
+  }
+
+  /// This device's click. The volume applies live while dragging; call
+  /// [saveLibrary] when the drag ends.
+  void setClick({int? subdivision, double? volume, int? sound}) {
+    library.subdivision = subdivision ?? library.subdivision;
+    library.volume = volume ?? library.volume;
+    library.sound = sound ?? library.sound;
+    _applyClick();
+    notifyListeners();
+    if (volume == null) store.save(library);
+  }
+
+  void setFlash({bool? beats, bool? countIn}) {
+    library.flash = beats ?? library.flash;
+    library.flashCountIn = countIn ?? library.flashCountIn;
     notifyListeners();
     store.save(library);
   }

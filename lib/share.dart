@@ -14,6 +14,9 @@ class ShowInfo {
     this.key,
     this.note,
     this.beatUnit = 4,
+    this.section,
+    this.nextSection,
+    this.sectionChange,
     this.setlist,
     this.position = 0,
     this.total = 0,
@@ -25,6 +28,9 @@ class ShowInfo {
   final String? key; // the song's musical key
   final String? note; // the song's one-line note for the band
   final int beatUnit; // the meter's lower number (notation only)
+  final String? section; // the song's section playing now
+  final String? nextSection; // the one scheduled, once it is
+  final double? sectionChange; // the beat where it starts
   final String? setlist; // null = no setlist running
   final int position; // 1-based
   final int total;
@@ -36,6 +42,9 @@ class ShowInfo {
     'key': ?key,
     'note': ?note,
     if (beatUnit != 4) 'unit': beatUnit,
+    'section': ?section,
+    if (nextSection != null)
+      'nextSection': {'name': nextSection, 'at': sectionChange},
     if (setlist != null)
       'setlist': {
         'name': setlist,
@@ -54,8 +63,22 @@ class ShowInfo {
     final s = m['setlist'];
     final song = text(m['song']), key = text(m['key']), note = text(m['note']);
     final unit = beatUnits.contains(m['unit']) ? m['unit'] as int : 4;
+    final ns = m['nextSection'];
+    final nextSection = ns is Map ? text(ns['name']) : null;
+    final at = ns is Map ? ns['at'] : null;
+    final sectionChange = nextSection != null && at is num
+        ? at.toDouble() + k
+        : null;
     if (s is! Map) {
-      return ShowInfo(song: song, key: key, note: note, beatUnit: unit);
+      return ShowInfo(
+        song: song,
+        key: key,
+        note: note,
+        beatUnit: unit,
+        section: text(m['section']),
+        nextSection: nextSection,
+        sectionChange: sectionChange,
+      );
     }
     final pos = s['pos'], total = s['total'], change = s['change'];
     return ShowInfo(
@@ -63,6 +86,9 @@ class ShowInfo {
       key: key,
       note: note,
       beatUnit: unit,
+      section: text(m['section']),
+      nextSection: nextSection,
+      sectionChange: sectionChange,
       setlist: text(s['name']),
       position: pos is int ? pos : 0,
       total: total is int ? total : 0,
@@ -78,6 +104,9 @@ class ShowInfo {
       other.key == key &&
       other.note == note &&
       other.beatUnit == beatUnit &&
+      other.section == section &&
+      other.nextSection == nextSection &&
+      other.sectionChange == sectionChange &&
       other.setlist == setlist &&
       other.position == position &&
       other.total == total &&
@@ -90,6 +119,9 @@ class ShowInfo {
     key,
     note,
     beatUnit,
+    section,
+    nextSection,
+    sectionChange,
     setlist,
     position,
     total,

@@ -112,6 +112,34 @@
      el mismo id se actualiza.
    - Los diálogos de archivo son del paquete `file_picker`.
 
+9. **Mi click, flash, rampa de tempo y secciones** (hecho en código; las
+   secciones y la rampa comprobadas con el motor real en
+   `tool/sections_smoke_test.dart`, el resto sin probar en dispositivos):
+   - Mi click (panel de Herramientas, solo en este dispositivo, no se
+     comparte): subdivisión (2, 3 o 4 clicks por pulso, más graves y a mitad
+     de volumen), volumen y sonido (Pitido, Madera, Digital). Los tres
+     sonidos mantienen el tono de 1000/1600 Hz, que es donde la calibración
+     de un seguidor busca al líder; solo cambia el timbre.
+   - Flash de pantalla (Ajustes): el metrónomo parpadea con cada pulso, más
+     fuerte en el 1. Interruptor aparte para la cuenta de entrada, que vale
+     con o sin el flash de cada pulso. Por encima de 180 BPM solo parpadea
+     el primer pulso del compás (más de tres destellos por segundo pueden
+     provocar crisis fotosensibles).
+   - Rampa de tempo (herramienta de práctica): sube N BPM cada M compases.
+     Cada canción o sección empieza de nuevo desde su tempo, y al parar
+     vuelve al tempo inicial. El salto llega hasta 100 ms después del primer
+     pulso del compás, no en la muestra exacta.
+   - Secciones dentro de una canción: tramos con nombre, compases y, si se
+     quiere, tempo y compás propios. Suenan en orden con el mismo mecanismo
+     de cambio exacto que los setlists (`pc_schedule_section`: sin pausa ni
+     cuenta). La duración de la canción sale de ellas. Tras la última, en
+     un setlist pasa a la siguiente canción; suelta, sigue sonando. Parar
+     vuelve a la primera sección. El broadcast lleva la sección que suena y
+     la que sigue (`section`, `nextSection`).
+   - En ChordPro las secciones viajan como
+     `{meta: seccion Nombre; compases; tempo; compás}`. No tienen que ver
+     con `{start_of_chorus}` y demás, que solo ordenan la letra.
+
 ## Audio con la pantalla apagada (Android) — hecho
 
 - `PlaybackService`: servicio en primer plano (tipo `mediaPlayback`) con
@@ -155,8 +183,7 @@
   activa el motor sigue corriendo en segundo plano aunque esté parado; pararlo
   si se queda sin sonar ni compañeros.
 - Latencia real en Windows (reloj de WASAPI).
-- Más adelante: código de sesión para varias bandas en la misma red,
-  subdivisiones audibles y secciones dentro de una canción.
+- Más adelante: código de sesión para varias bandas en la misma red.
 
 ## Herramientas de desarrollo
 

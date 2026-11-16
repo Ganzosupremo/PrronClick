@@ -44,6 +44,24 @@ class SettingsPage extends StatelessWidget {
                   onChanged: (n) => state.setCountIn(n!),
                 ),
               ),
+              SwitchListTile(
+                title: const Text('Flash de pantalla'),
+                subtitle: const Text(
+                  'El metrónomo parpadea con cada pulso. Por encima de 180 '
+                  'BPM, solo en el primer pulso del compás.',
+                ),
+                value: lib.flash,
+                onChanged: (v) => state.setFlash(beats: v),
+              ),
+              SwitchListTile(
+                title: const Text('Flash en la cuenta de entrada'),
+                subtitle: const Text(
+                  'Si parpadea durante la cuenta, esté o no encendido el '
+                  'flash de cada pulso.',
+                ),
+                value: lib.flashCountIn,
+                onChanged: (v) => state.setFlash(countIn: v),
+              ),
               const Divider(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

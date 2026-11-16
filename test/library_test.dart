@@ -18,6 +18,8 @@ void main() {
   test('missing file loads defaults', () async {
     final lib = await store.load();
     expect(lib.practiceTools, isFalse);
+    expect((lib.subdivision, lib.volume, lib.sound), (1, 1, 0));
+    expect((lib.flash, lib.flashCountIn, lib.ramp), (false, false, false));
     expect(lib.extraLatencyMs, 0);
   });
 

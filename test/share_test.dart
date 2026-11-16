@@ -34,6 +34,33 @@ void main() {
     expect(ShowInfo.fromMessage(wire({'unit': 5, 'key': 3}), 0).beatUnit, 4);
   });
 
+  test('the section playing and the next one reach followers', () {
+    const info = ShowInfo(
+      song: 'Dos',
+      section: 'Verso',
+      nextSection: 'Coro',
+      sectionChange: 16,
+    );
+    final got = ShowInfo.fromMessage(wire(info.toJson()), 3);
+    expect(
+      (got.section, got.nextSection, got.sectionChange),
+      ('Verso', 'Coro', 19),
+    );
+    const inSet = ShowInfo(section: 'Verso', setlist: 'B', changeBeat: 40);
+    expect(ShowInfo.fromMessage(wire(inSet.toJson()), 0), inSet);
+    final junk = ShowInfo.fromMessage(
+      wire({
+        'section': 4,
+        'nextSection': {'name': 'Coro', 'at': 'x'},
+      }),
+      0,
+    );
+    expect(
+      (junk.section, junk.nextSection, junk.sectionChange),
+      (null, 'Coro', null),
+    );
+  });
+
   test('no setlist, last song, and junk from the network', () {
     expect(ShowInfo.fromMessage(wire({'song': 'Uno'}), 0).setlist, isNull);
     final last = ShowInfo.fromMessage(

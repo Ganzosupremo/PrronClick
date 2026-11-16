@@ -44,9 +44,31 @@ void main() {
       find.widgetWithText(TextFormField, 'Tonalidad (opcional)'),
       'Am',
     );
+    // A section with its own tempo, keeping the song's meter.
+    await tester.tap(find.text('Añadir'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre').last,
+      'Coro',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Compases'),
+      '12',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Tempo (opcional)'),
+      '90',
+    );
+    await tester.tap(find.text('Guardar').last);
+    await tester.pumpAndSettle();
+    expect(find.text('12 compases · 90 BPM'), findsOneWidget);
+
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
     expect((saved!.name, saved!.meter, saved!.key), ('Vals', '6/16', 'Am'));
+    final section = saved!.sections.single;
+    expect((section.name, section.bars, section.bpm), ('Coro', 12, 90));
+    expect((section.beatsPerBar, saved!.unitAt(0)), (null, 16));
     expect((saved!.note, saved!.lyrics), (null, null));
   });
 

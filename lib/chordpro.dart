@@ -99,12 +99,38 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
         }
       case 'meta' when RegExp(r'^not[ae]\s+\S').hasMatch(value):
         song.note = value.substring(4).trim();
+      case 'meta' when _section(value) != null:
+        song.sections.add(_section(value)!);
       default:
         body.add(line);
     }
   }
   finish();
   return songs;
+}
+
+/// A click section: "seccion Name; bars[; bpm][; beats/unit]" (ChordPro has
+/// nothing for these, so they travel as {meta}).
+Section? _section(String value) {
+  final m = RegExp(
+    r'^sec[ct]i[oó]n\s+(.+)$',
+    caseSensitive: false,
+  ).firstMatch(value);
+  final parts = [for (final p in (m?.group(1) ?? '').split(';')) p.trim()];
+  final bars = parts.length < 2 ? null : int.tryParse(parts[1]);
+  if (parts[0].isEmpty || bars == null || bars < 1) return null;
+  final section = Section(name: parts[0], bars: bars.clamp(1, 999));
+  for (final p in parts.skip(2)) {
+    final meter = RegExp(r'^(\d+)\s*/\s*(\d+)$').firstMatch(p);
+    if (meter != null) {
+      final unit = int.parse(meter.group(2)!);
+      section.beatsPerBar = int.parse(meter.group(1)!).clamp(1, 16);
+      section.beatUnit = beatUnits.contains(unit) ? unit : 4;
+    } else if (double.tryParse(p) case final bpm?) {
+      section.bpm = bpm.clamp(20, 300);
+    }
+  }
+  return section;
 }
 
 /// Writes [songs] so [parseChordPro] reads the same songs back.
@@ -117,6 +143,8 @@ String toChordPro(Iterable<Song> songs) => [
       '{time: ${s.meter}}',
       if (s.durationSeconds case final d?) '{duration: ${formatDuration(d)}}',
       if (s.note != null) '{meta: nota ${s.note}}',
+      for (final c in s.sections)
+        '{meta: seccion ${[c.name.replaceAll(';', ','), c.bars, if (c.bpm case final bpm?) bpm.round(), if (c.beatsPerBar case final beats?) '$beats/${c.beatUnit ?? 4}'].join('; ')}}',
       if (s.lyrics != null) '\n${s.lyrics}',
     ].join('\n'),
 ].join('\n\n{new_song}\n');

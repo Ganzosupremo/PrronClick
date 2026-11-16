@@ -228,6 +228,11 @@ class _SongEditorState extends State<SongEditor> {
   late final key = TextEditingController(text: widget.song?.key);
   late final note = TextEditingController(text: widget.song?.note);
   late final lyrics = TextEditingController(text: widget.song?.lyrics);
+  // Copies: nothing changes in the song until it is saved.
+  late final sections = [
+    for (final s in widget.song?.sections ?? const <Section>[])
+      Section.fromJson(s.toJson())!,
+  ];
 
   @override
   void dispose() {
@@ -252,6 +257,24 @@ class _SongEditorState extends State<SongEditor> {
     });
   }
 
+  Future<void> _editSection([int? index]) async {
+    final section = await showDialog<Section>(
+      context: context,
+      builder: (_) =>
+          _SectionDialog(section: index == null ? null : sections[index]),
+    );
+    if (section == null) return;
+    setState(() {
+      index == null ? sections.add(section) : sections[index] = section;
+    });
+  }
+
+  static String _describe(Section s) => [
+    s.bars == 1 ? '1 compás' : '${s.bars} compases',
+    if (s.bpm case final bpm?) '${bpm.round()} BPM',
+    if (s.beatsPerBar case final beats?) '$beats/${s.beatUnit ?? 4}',
+  ].join(' · ');
+
   void _save() {
     if (!form.currentState!.validate()) return;
     final song =
@@ -270,7 +293,8 @@ class _SongEditorState extends State<SongEditor> {
       ..durationSeconds = parseDuration(duration.text)
       ..key = orNull(key.text)
       ..note = orNull(note.text)
-      ..lyrics = orNull(lyrics.text);
+      ..lyrics = orNull(lyrics.text)
+      ..sections = sections;
     Navigator.pop(context, song);
   }
 
@@ -336,6 +360,49 @@ class _SongEditorState extends State<SongEditor> {
               },
             ),
             const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(child: Text('Secciones (opcional)')),
+                TextButton.icon(
+                  onPressed: _editSection,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Añadir'),
+                ),
+              ],
+            ),
+            Text(
+              'Tramos con sus compases y, si quieres, su tempo y compás. '
+              'Suenan en orden y de ellos sale la duración de la canción.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            for (final (i, s) in sections.indexed)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(s.name),
+                subtitle: Text(_describe(s)),
+                onTap: () => _editSection(i),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Subir',
+                      icon: const Icon(Icons.arrow_upward),
+                      onPressed: i == 0
+                          ? null
+                          : () => setState(
+                              () =>
+                                  sections.insert(i - 1, sections.removeAt(i)),
+                            ),
+                    ),
+                    IconButton(
+                      tooltip: 'Quitar sección',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() => sections.removeAt(i)),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: key,
               decoration: const InputDecoration(
@@ -374,6 +441,137 @@ class _SongEditorState extends State<SongEditor> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Creates or edits one section; pops the new [Section].
+class _SectionDialog extends StatefulWidget {
+  const _SectionDialog({this.section});
+
+  final Section? section;
+
+  @override
+  State<_SectionDialog> createState() => _SectionDialogState();
+}
+
+class _SectionDialogState extends State<_SectionDialog> {
+  final form = GlobalKey<FormState>();
+  late final name = TextEditingController(text: widget.section?.name);
+  late final bars = TextEditingController(text: '${widget.section?.bars ?? 8}');
+  late final bpm = TextEditingController(
+    text: widget.section?.bpm?.round().toString(),
+  );
+  late int? beats = widget.section?.beatsPerBar;
+  late int? unit = widget.section?.beatUnit;
+
+  @override
+  void dispose() {
+    name.dispose();
+    bars.dispose();
+    bpm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickMeter() async {
+    final picked = await pickMeter(context, beats ?? 4, unit ?? 4);
+    if (picked == null) return;
+    setState(() {
+      beats = picked.$1;
+      unit = picked.$2;
+    });
+  }
+
+  void _save() {
+    if (!form.currentState!.validate()) return;
+    Navigator.pop(
+      context,
+      Section(
+        name: name.text.trim(),
+        bars: int.parse(bars.text),
+        bpm: double.tryParse(bpm.text),
+        beatsPerBar: beats,
+        beatUnit: beats == null ? null : unit,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.section == null ? 'Nueva sección' : 'Editar sección'),
+      content: Form(
+        key: form,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: name,
+                autofocus: widget.section == null,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  hintText: 'Coro',
+                ),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Ponle un nombre' : null,
+              ),
+              TextFormField(
+                controller: bars,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Compases'),
+                validator: (v) {
+                  final n = int.tryParse(v ?? '');
+                  return n == null || n < 1 || n > 999 ? 'Entre 1 y 999' : null;
+                },
+              ),
+              TextFormField(
+                controller: bpm,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Tempo (opcional)',
+                  helperText: 'Vacío: el de la canción.',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final n = int.tryParse(v);
+                  return n == null || n < 20 || n > 300
+                      ? 'Entre 20 y 300'
+                      : null;
+                },
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Expanded(child: Text('Compás')),
+                  if (beats != null)
+                    IconButton(
+                      tooltip: 'Usar el compás de la canción',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() => beats = unit = null),
+                    ),
+                  OutlinedButton(
+                    onPressed: _pickMeter,
+                    child: Text(
+                      beats == null
+                          ? 'El de la canción'
+                          : '$beats/${unit ?? 4}',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(onPressed: _save, child: const Text('Guardar')),
+      ],
     );
   }
 }

@@ -38,6 +38,22 @@ class Engine {
       setBeatUnit = lib.lookupFunction<Void Function(Int), void Function(int)>(
         'pc_set_beat_unit',
       ),
+      scheduleSection = lib
+          .lookupFunction<
+            Void Function(Double, Double, Int),
+            void Function(double, double, int)
+          >('pc_schedule_section'),
+      setSubdivision = lib
+          .lookupFunction<Void Function(Int), void Function(int)>(
+            'pc_set_subdivision',
+          ),
+      setVolume = lib
+          .lookupFunction<Void Function(Double), void Function(double)>(
+            'pc_set_volume',
+          ),
+      setSound = lib.lookupFunction<Void Function(Int), void Function(int)>(
+        'pc_set_sound',
+      ),
       setExtraLatencyMs = lib
           .lookupFunction<Void Function(Double), void Function(double)>(
             'pc_set_extra_latency_ms',
@@ -177,4 +193,14 @@ class Engine {
 
   /// (beat, bpm or 0 to stop there, beatsPerBar, pauseBars)
   final void Function(double, double, int, int) scheduleSong;
+
+  /// (beat, bpm, beatsPerBar): the same change inside a song, with no pause
+  /// or count-in.
+  final void Function(double, double, int) scheduleSection;
+
+  /// This device's click: softer clicks inside each beat (1 = none), volume
+  /// 0..1 and timbre (0 beep, 1 wood, 2 digital).
+  final void Function(int) setSubdivision;
+  final void Function(double) setVolume;
+  final void Function(int) setSound;
 }

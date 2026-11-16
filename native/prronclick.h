@@ -66,6 +66,15 @@ PC_API void pc_set_count_in(int bars);
 // Replaces any pending change; a later meter change replaces this one.
 PC_API void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars);
 
+// The same change inside a song (a new section): no pause, no count-in.
+PC_API void pc_schedule_section(double beat, double bpm, int beatsPerBar);
+
+// This device's click, not shared: softer clicks inside each beat (1 = none,
+// up to 4), volume 0..1, and timbre (0 beep, 1 wood, 2 digital).
+PC_API void pc_set_subdivision(int clicksPerBeat);
+PC_API void pc_set_volume(double volume);
+PC_API void pc_set_sound(int sound);
+
 // Practice tools, local to this device; 0 turns each off.
 // Shift the click a 16th note every barsPerStep bars: 1, e, &, a, 1...
 PC_API void pc_set_displacement(int barsPerStep);
