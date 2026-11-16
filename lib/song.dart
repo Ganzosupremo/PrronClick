@@ -50,6 +50,31 @@ class Song {
   }
 }
 
+const _accents = {
+  'á': 'a',
+  'é': 'e',
+  'í': 'i',
+  'ó': 'o',
+  'ú': 'u',
+  'ü': 'u',
+  'ñ': 'n',
+};
+
+/// Lowercase without Spanish accents, so "cancion" finds "Canción".
+String fold(String s) =>
+    s.toLowerCase().split('').map((c) => _accents[c] ?? c).join();
+
+/// Songs whose name has every word of [query] and, if set, that [meter].
+List<Song> filterSongs(List<Song> songs, String query, int? meter) {
+  final words = fold(query).split(' ').where((w) => w.isNotEmpty).toList();
+  return [
+    for (final s in songs)
+      if ((meter == null || s.beatsPerBar == meter) &&
+          words.every(fold(s.name).contains))
+        s,
+  ];
+}
+
 String formatDuration(int seconds) =>
     '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 

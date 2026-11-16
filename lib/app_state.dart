@@ -49,6 +49,13 @@ class AppState extends ChangeNotifier {
     _libraryChanged();
   }
 
+  /// Moves the song at [from] so it ends up at index [to].
+  void moveSong(int from, int to) {
+    final songs = library.songs;
+    songs.insert(to, songs.removeAt(from));
+    _libraryChanged();
+  }
+
   void deleteSong(Song song) {
     library.songs.remove(song);
     if (currentSong == song) currentSong = null;

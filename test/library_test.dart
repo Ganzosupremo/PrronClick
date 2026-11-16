@@ -84,4 +84,22 @@ void main() {
     }
     expect(formatDuration(185), '3:05');
   });
+
+  test('song search ignores case and accents; meter filter', () {
+    Song song(String name, int bpb) =>
+        Song(id: name, name: name, bpm: 100, beatsPerBar: bpb);
+    final songs = [
+      song('Canción Triste', 4),
+      song('Vals', 3),
+      song('Otra canción', 3),
+    ];
+    List<String> names(String q, [int? m]) => [
+      for (final s in filterSongs(songs, q, m)) s.name,
+    ];
+    expect(names('CANCION'), ['Canción Triste', 'Otra canción']);
+    expect(names('cancion otra'), ['Otra canción']);
+    expect(names('', 3), ['Vals', 'Otra canción']);
+    expect(names('triste', 3), isEmpty);
+    expect(names('  '), hasLength(3));
+  });
 }

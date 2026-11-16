@@ -4,13 +4,29 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'song.dart';
 
-class SongsPage extends StatelessWidget {
+class SongsPage extends StatefulWidget {
   const SongsPage({super.key, required this.state, required this.onLoaded});
 
   final AppState state;
 
   /// Called after a song is loaded, so the app can show the metronome.
   final VoidCallback onLoaded;
+
+  @override
+  State<SongsPage> createState() => _SongsPageState();
+}
+
+class _SongsPageState extends State<SongsPage> {
+  final search = TextEditingController();
+  int? meter; // filter; null = all
+
+  AppState get state => widget.state;
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
 
   Future<void> _edit(BuildContext context, [Song? song]) async {
     final saved = await Navigator.of(context).push<Song>(
@@ -53,7 +69,7 @@ class SongsPage extends StatelessWidget {
       return;
     }
     state.loadSong(song);
-    onLoaded();
+    widget.onLoaded();
   }
 
   @override
@@ -83,26 +99,99 @@ class SongsPage extends StatelessWidget {
               ),
             );
           }
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 88), // clear of the FAB
+          final shown = filterSongs(songs, search.text, meter);
+          final filtering = shown.length != songs.length;
+          final meters = {for (final s in songs) s.beatsPerBar}.toList()
+            ..sort();
+          Widget tile(Song song, int index) => ListTile(
+            key: ValueKey(song.id),
+            // Dragging only makes sense on the full list.
+            leading: filtering
+                ? null
+                : ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_handle),
+                  ),
+            title: Text(song.name),
+            subtitle: Text(song.summary),
+            selected: song == state.currentSong,
+            onTap: () => _load(context, song),
+            trailing: PopupMenuButton<String>(
+              tooltip: 'Opciones',
+              onSelected: (action) => action == 'edit'
+                  ? _edit(context, song)
+                  : _delete(context, song),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Editar')),
+                PopupMenuItem(value: 'delete', child: Text('Borrar')),
+              ],
+            ),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final song in songs)
-                ListTile(
-                  title: Text(song.name),
-                  subtitle: Text(song.summary),
-                  selected: song == state.currentSong,
-                  onTap: () => _load(context, song),
-                  trailing: PopupMenuButton<String>(
-                    tooltip: 'Opciones',
-                    onSelected: (action) => action == 'edit'
-                        ? _edit(context, song)
-                        : _delete(context, song),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Editar')),
-                      PopupMenuItem(value: 'delete', child: Text('Borrar')),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SearchBar(
+                  controller: search,
+                  hintText: 'Buscar canción',
+                  leading: const Icon(Icons.search),
+                  trailing: [
+                    if (search.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Borrar búsqueda',
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(search.clear),
+                      ),
+                  ],
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              if (meters.length > 1)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      for (final m in meters)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text('$m/4'),
+                            selected: meter == m,
+                            onSelected: (on) =>
+                                setState(() => meter = on ? m : null),
+                          ),
+                        ),
                     ],
                   ),
                 ),
+              Expanded(
+                child: shown.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Ninguna canción coincide.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                        ),
+                      )
+                    : filtering
+                    ? ListView(
+                        padding: const EdgeInsets.only(bottom: 88),
+                        children: [
+                          for (final (i, song) in shown.indexed) tile(song, i),
+                        ],
+                      )
+                    : ReorderableListView(
+                        buildDefaultDragHandles: false,
+                        padding: const EdgeInsets.only(bottom: 88),
+                        onReorderItem: state.moveSong,
+                        children: [
+                          for (final (i, song) in shown.indexed) tile(song, i),
+                        ],
+                      ),
+              ),
             ],
           );
         },
