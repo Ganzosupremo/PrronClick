@@ -189,6 +189,10 @@ class _MetronomePageState extends State<MetronomePage>
             ),
             const SizedBox(height: 16),
             Text('Ajuste de latencia: ${extraLatencyMs.round()} ms'),
+            Text(
+              'Latencia de salida compensada: ${engine.outputLatencyMs().toStringAsFixed(1)} ms',
+              style: const TextStyle(fontSize: 12),
+            ),
             const Text(
               'Súbelo si tu click suena tarde respecto a los demás (p. ej. con auriculares Bluetooth).',
               style: TextStyle(fontSize: 12),

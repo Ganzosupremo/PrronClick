@@ -11,6 +11,11 @@
 #include <cmath>
 #include <memory>
 
+#if defined(__ANDROID__)
+#include <dlfcn.h>
+#include <time.h>
+#endif
+
 namespace {
 
 using std::chrono::microseconds;
@@ -26,7 +31,7 @@ struct Engine {
   double sampleRate = 48000.0;
   std::atomic<double> quantum{4.0};
   std::atomic<double> extraLatencyMicros{0.0};
-  double outputLatencyMicros = 0.0;
+  std::atomic<double> outputLatencyMicros{0.0};
 
   // Audio thread only.
   double lastBeat = -1.0;
@@ -35,12 +40,55 @@ struct Engine {
   long clickLength = 0;
 };
 
-std::unique_ptr<Engine> g;
+// Raw pointer on purpose: a static destructor would tear down the audio and Link
+// threads while the DLL unloads, which deadlocks and leaves the process running
+// after its window closes. Without pc_shutdown the OS reclaims it on exit.
+Engine* g = nullptr;
+
+#if defined(__ANDROID__)
+// AAudio is loaded at runtime (miniaudio does the same) so the app still runs
+// where it is missing; we then keep the buffer-size estimate.
+using GetTimestampFn = int32_t (*)(void*, clockid_t, int64_t*, int64_t*);
+using GetFramesWrittenFn = int64_t (*)(void*);
+GetTimestampFn aaudioGetTimestamp = nullptr;
+GetFramesWrittenFn aaudioGetFramesWritten = nullptr;
+
+int64_t nowNanos(clockid_t clock) {
+  timespec ts{};
+  clock_gettime(clock, &ts);
+  return ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
+// Measures how long until the first frame of the buffer being rendered now is
+// heard, from the time the DAC presented a known frame. Returns false if AAudio
+// cannot tell yet (e.g. right after start).
+bool measuredLatencyMicros(Engine& e, double& out) {
+  if (!aaudioGetTimestamp || e.device.pContext->backend != ma_backend_aaudio) return false;
+  void* stream = e.device.aaudio.pStreamPlayback;
+  int64_t framePos = 0, timeNs = 0;
+  if (!stream || aaudioGetTimestamp(stream, CLOCK_MONOTONIC, &framePos, &timeNs) != 0) {
+    return false;
+  }
+  const int64_t nextFrame = aaudioGetFramesWritten(stream);
+  const double presentNs = timeNs + (nextFrame - framePos) * 1e9 / e.device.playback.internalSampleRate;
+  out = (presentNs - nowNanos(CLOCK_MONOTONIC)) / 1000.0;
+  return out > 0.0 && out < 500000.0;
+}
+#endif
 
 void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
   auto& e = *static_cast<Engine*>(device->pUserData);
   auto* out = static_cast<float*>(output);
   const ma_uint32 channels = device->playback.channels;
+
+#if defined(__ANDROID__)
+  double measured = 0.0;
+  if (measuredLatencyMicros(e, measured)) {
+    // Smooth timestamp jitter so clicks don't wobble.
+    const double prev = e.outputLatencyMicros.load();
+    e.outputLatencyMicros = prev + 0.05 * (measured - prev);
+  }
+#endif
 
   const auto state = e.link.captureAudioSessionState();
   const double quantum = e.quantum.load();
@@ -84,6 +132,15 @@ extern "C" {
 
 bool pc_init(void) {
   if (g) return true;
+#if defined(__ANDROID__)
+  if (void* aaudio = dlopen("libaaudio.so", RTLD_NOW)) {
+    aaudioGetTimestamp =
+        reinterpret_cast<GetTimestampFn>(dlsym(aaudio, "AAudioStream_getTimestamp"));
+    aaudioGetFramesWritten =
+        reinterpret_cast<GetFramesWrittenFn>(dlsym(aaudio, "AAudioStream_getFramesWritten"));
+    if (!aaudioGetFramesWritten) aaudioGetTimestamp = nullptr;
+  }
+#endif
   auto e = std::make_unique<Engine>();
   e->link.enableStartStopSync(true);
 
@@ -93,13 +150,19 @@ bool pc_init(void) {
   config.sampleRate = 0;  // device native rate
   config.performanceProfile = ma_performance_profile_low_latency;
   config.dataCallback = render;
+#if defined(__ANDROID__)
+  // Our callback must run straight from the backend's, so frames written by
+  // AAudio line up with the buffer being rendered.
+  config.noFixedSizedCallback = MA_TRUE;
+#endif
   config.pUserData = e.get();
 
   if (ma_device_init(nullptr, &config, &e->device) != MA_SUCCESS) return false;
   e->sampleRate = e->device.sampleRate;
-  // shortcut: buffer-size estimate of output latency; ignores DAC/driver delay,
-  // which is what the user's extra-latency setting covers. Upgrade to the
-  // AAudio/AVAudioSession reported latency if clicks drift between devices.
+  // shortcut: buffer-size estimate of output latency; ignores mixer/DAC delay.
+  // Android replaces it with the AAudio-measured latency once audio runs;
+  // Windows and iOS still need their measured latency (WASAPI clock /
+  // AVAudioSession.outputLatency) if clicks land late against other devices.
   e->outputLatencyMicros = 1e6 * e->device.playback.internalPeriodSizeInFrames *
                            e->device.playback.internalPeriods /
                            e->device.playback.internalSampleRate;
@@ -107,14 +170,15 @@ bool pc_init(void) {
     ma_device_uninit(&e->device);
     return false;
   }
-  g = std::move(e);
+  g = e.release();
   return true;
 }
 
 void pc_shutdown(void) {
   if (!g) return;
   ma_device_uninit(&g->device);
-  g.reset();
+  delete g;
+  g = nullptr;
 }
 
 void pc_set_link_enabled(bool enabled) {
@@ -159,6 +223,10 @@ void pc_set_beats_per_bar(int beats) {
 
 void pc_set_extra_latency_ms(double ms) {
   if (g) g->extraLatencyMicros = std::max(0.0, ms) * 1000.0;
+}
+
+double pc_output_latency_ms(void) {
+  return g ? g->outputLatencyMicros.load() / 1000.0 : 0.0;
 }
 
 double pc_beat(void) {

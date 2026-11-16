@@ -35,6 +35,10 @@ PC_API void pc_set_beats_per_bar(int beats);
 // Extra output latency to compensate (e.g. Bluetooth headphones), in ms.
 PC_API void pc_set_extra_latency_ms(double ms);
 
+// Output latency the engine compensates for (measured on Android, estimated
+// elsewhere), excluding the extra latency setting, in ms.
+PC_API double pc_output_latency_ms(void);
+
 // Current beat position on the session timeline (for the UI).
 PC_API double pc_beat(void);
 

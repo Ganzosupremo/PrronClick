@@ -39,6 +39,10 @@ class Engine {
           .lookupFunction<Void Function(Double), void Function(double)>(
             'pc_set_extra_latency_ms',
           ),
+      outputLatencyMs = lib
+          .lookupFunction<Double Function(), double Function()>(
+            'pc_output_latency_ms',
+          ),
       beat = lib.lookupFunction<Double Function(), double Function()>(
         'pc_beat',
       );
@@ -65,5 +69,6 @@ class Engine {
   final double Function() tempo;
   final void Function(int) setBeatsPerBar;
   final void Function(double) setExtraLatencyMs;
+  final double Function() outputLatencyMs;
   final double Function() beat;
 }
