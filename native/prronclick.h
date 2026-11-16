@@ -58,7 +58,16 @@ PC_API void pc_set_displacement(int barsPerStep);
 PC_API void pc_set_gap_trainer(int playBars, int muteBars);
 
 // Extra output latency to compensate (e.g. Bluetooth headphones), in ms.
+// Negative if the device reports more latency than it has.
 PC_API void pc_set_extra_latency_ms(double ms);
+
+// Latency calibration for a follower while the leader plays: records the mic
+// and swaps our click for a higher tone on every beat. Records up to 15 s.
+// start returns false if the mic cannot be opened.
+PC_API bool pc_calibration_start(void);
+// Stops and returns how many ms late our clicks sound against the leader's
+// (add it to the extra latency), or NaN if both were not heard clearly.
+PC_API double pc_calibration_finish(void);
 
 // Output latency the engine compensates for (measured on Android, estimated
 // elsewhere), excluding the extra latency setting, in ms.

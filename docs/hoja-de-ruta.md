@@ -29,11 +29,20 @@
      compartido con los seguidores).
    - Comprobado con un seguidor sonando: sigue el cambio de canción con la
      fase del compás igual a la del líder.
-5. **Calibración automática de latencia:** el líder escucha con su micrófono
-   los clicks de cada seguidor, los sitúa en la rejilla de Link y le envía la
-   corrección por el broadcast. Así los dispositivos que no informan de su
-   latencia real (PC, Bluetooth, algunos móviles) quedan alineados sin ajuste
-   manual. El método ya está probado con `tool/latency_probe`.
+5. **Calibración automática de latencia:** hecho. En Ajustes, "Calibrar con
+   el líder": un seguidor, con el líder sonando, cambia su click por un tono
+   más agudo (2400 Hz) y graba 8 s con el micrófono. Los dos clicks pasan por
+   el mismo micrófono, así que su latencia de entrada se anula: la distancia
+   entre ambos es lo que este dispositivo va tarde, y se suma al ajuste de
+   latencia. No hace falta nada del líder ni del broadcast.
+   - Análisis en `native/calibrate.hpp`, probado con grabaciones sintéticas
+     (`native/calibrate_test.cpp`): error de menos de 1 ms, también con eco y
+     con el líder flojo.
+   - Comprobado: el PC con Windows midió 166 ms tarde (a mano habíamos visto
+     unos 170); con la corrección, -4 y -5 ms (lo que tarda el sonido entre
+     los dos aparatos). El teléfono como seguidor, -3 ms.
+   - Límite: errores de más de medio pulso (250 ms a 120 BPM) se confunden;
+     calibrar a un tempo moderado y sin otros seguidores sonando.
 
 ## Comprobado con dispositivos reales
 
@@ -68,5 +77,9 @@
   `-DPRRONCLICK_TESTS=ON` en `native/CMakeLists.txt`.
 - `tool/setlist_smoke.dart`: comprueba que un cambio de canción programado no
   mueve el pulso y que el final del setlist para la música.
+- `tool/calibrate_smoke.dart`: sigue al líder y ejecuta la calibración desde
+  el PC, imprimiendo cuánto va tarde.
+- `native/calibrate_test.cpp`: test del análisis de la calibración (mismo
+  `-DPRRONCLICK_TESTS=ON`).
 - `tool/latency_probe`: graba el micrófono alineado con Link para medir dónde
   suena cada dispositivo. Se compila con CMake (ver su `CMakeLists.txt`).

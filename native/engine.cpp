@@ -3,6 +3,7 @@
 
 #include <ableton/Link.hpp>
 
+#include "calibrate.hpp"
 #include "miniaudio.h"
 #include "rules.hpp"
 
@@ -12,6 +13,7 @@
 #include <cmath>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #if defined(__ANDROID__)
 #include <dlfcn.h>
@@ -64,6 +66,15 @@ struct Engine {
   std::atomic<double> extraLatencyMicros{0.0};
   std::atomic<double> outputLatencyMicros{0.0};
 
+  // Latency calibration: while on, every beat plays pc::ownClick and the mic
+  // is recorded into `recording` (allocated up front: the capture callback
+  // must not allocate).
+  std::atomic<bool> calibrating{false};
+  ma_device capture{};
+  bool captureOpen = false;
+  std::vector<float> recording;
+  std::atomic<size_t> recorded{0};
+
   // Audio thread only.
   BarConfig audioConfig;
   unsigned appliedSongChangeId = 0;
@@ -71,6 +82,7 @@ struct Engine {
   double clickFreq = 0.0;
   long clickSample = 0;
   long clickLength = 0;
+  bool clickOwn = false;
 };
 
 // Raw pointer on purpose: a static destructor would tear down the audio and Link
@@ -160,9 +172,17 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
       const auto t = hostTime + microseconds(std::llround(i * microsPerFrame));
       const double beat = state.beatAtTime(t, kQuantum);
       cfg.applyPendingAt(beat);
-      if (beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat)) {
+      if (e.calibrating) {
+        // Plain beats, no practice rules: the leader's clicks are the reference.
+        if (beat >= 0.0 && std::floor(beat) != std::floor(e.lastBeat)) {
+          e.clickOwn = true;
+          e.clickSample = 0;
+          e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
+        }
+      } else if (beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat)) {
         const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
         if (!pc::isMuted(cfg.rules, coord)) {
+          e.clickOwn = false;
           e.clickFreq = pc::isAccent(cfg.rules, coord) ? kAccentHz : kBeatHz;
           e.clickSample = 0;
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
@@ -176,14 +196,23 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
     float sample = 0.0f;
     if (e.clickSample < e.clickLength) {
       const double t = e.clickSample / e.sampleRate;
-      sample = static_cast<float>(0.6 * std::sin(2.0 * kPi * e.clickFreq * t) *
-                                  std::exp(-t * 150.0));
+      sample = static_cast<float>(e.clickOwn ? pc::ownClick(t)
+                                             : 0.6 * std::sin(2.0 * kPi * e.clickFreq * t) *
+                                                   std::exp(-t * 150.0));
       ++e.clickSample;
     }
     for (ma_uint32 c = 0; c < channels; ++c) {
       out[i * channels + c] = sample;
     }
   }
+}
+
+void record(ma_device* device, void*, const void* input, ma_uint32 frames) {
+  auto& e = *static_cast<Engine*>(device->pUserData);
+  const size_t at = e.recorded.load();
+  const size_t n = std::min<size_t>(frames, e.recording.size() - at);
+  std::copy_n(static_cast<const float*>(input), n, e.recording.begin() + at);
+  e.recorded = at + n;
 }
 
 }  // namespace
@@ -236,6 +265,7 @@ bool pc_init(void) {
 
 void pc_shutdown(void) {
   if (!g) return;
+  pc_calibration_finish();
   ma_device_uninit(&g->device);
   delete g;
   g = nullptr;
@@ -370,7 +400,44 @@ void pc_set_gap_trainer(int playBars, int muteBars) {
 }
 
 void pc_set_extra_latency_ms(double ms) {
-  if (g) g->extraLatencyMicros = std::max(0.0, ms) * 1000.0;
+  if (g) g->extraLatencyMicros = std::clamp(ms, -200.0, 1000.0) * 1000.0;
+}
+
+bool pc_calibration_start(void) {
+  if (!g || g->captureOpen) return false;
+  ma_device_config c = ma_device_config_init(ma_device_type_capture);
+  c.capture.format = ma_format_f32;
+  c.capture.channels = 1;
+  c.sampleRate = 48000;
+  c.dataCallback = record;
+  c.pUserData = g;
+  // No noise suppression or gain control: they eat or reshape clicks.
+  c.aaudio.inputPreset = ma_aaudio_input_preset_unprocessed;
+  if (ma_device_init(nullptr, &c, &g->capture) != MA_SUCCESS) {
+    c.aaudio.inputPreset = ma_aaudio_input_preset_default;  // not on every phone
+    if (ma_device_init(nullptr, &c, &g->capture) != MA_SUCCESS) return false;
+  }
+  g->recording.assign(static_cast<size_t>(15 * g->capture.sampleRate), 0.0f);
+  g->recorded = 0;
+  if (ma_device_start(&g->capture) != MA_SUCCESS) {
+    ma_device_uninit(&g->capture);
+    return false;
+  }
+  g->captureOpen = true;
+  g->calibrating = true;
+  return true;
+}
+
+double pc_calibration_finish(void) {
+  if (!g || !g->captureOpen) return NAN;
+  g->calibrating = false;
+  const double rate = g->capture.sampleRate;
+  ma_device_uninit(&g->capture);  // stops the callback before we read
+  g->captureOpen = false;
+  g->recording.resize(g->recorded.load());
+  const auto result = pc::analyze(g->recording, rate);
+  g->recording = {};
+  return result.lateMs;
 }
 
 double pc_output_latency_ms(void) {

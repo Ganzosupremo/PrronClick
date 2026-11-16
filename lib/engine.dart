@@ -46,6 +46,13 @@ class Engine {
       beat = lib.lookupFunction<Double Function(), double Function()>(
         'pc_beat',
       ),
+      calibrationStart = lib.lookupFunction<Bool Function(), bool Function()>(
+        'pc_calibration_start',
+      ),
+      calibrationFinish = lib
+          .lookupFunction<Double Function(), double Function()>(
+            'pc_calibration_finish',
+          ),
       setBar = lib
           .lookupFunction<
             Void Function(Int, Double, Double, Int, Double, Double),
@@ -108,6 +115,11 @@ class Engine {
   final void Function(double) setExtraLatencyMs;
   final double Function() outputLatencyMs;
   final double Function() beat;
+
+  /// Follower calibration: records the mic and swaps our click for a higher
+  /// tone. finish returns how many ms late we sound (NaN = not heard).
+  final bool Function() calibrationStart;
+  final double Function() calibrationFinish;
 
   /// (beatsPerBar, origin, muteUntil, nextBeatsPerBar or 0, nextOrigin,
   /// nextMuteBeats)

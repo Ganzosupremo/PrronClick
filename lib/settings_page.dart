@@ -40,7 +40,8 @@ class SettingsPage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Súbelo si tu click suena tarde respecto a los demás '
-                      '(p. ej. con auriculares Bluetooth).',
+                      '(p. ej. con auriculares Bluetooth), o calíbralo '
+                      'abajo.',
                       style: small,
                     ),
                     Text(
@@ -52,18 +53,72 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               Slider(
-                min: 0,
+                min: -100,
                 max: 400,
-                divisions: 80,
-                value: lib.extraLatencyMs.clamp(0, 400),
+                divisions: 100,
+                value: lib.extraLatencyMs.clamp(-100, 400),
                 label: '${lib.extraLatencyMs.round()} ms',
                 onChanged: state.setExtraLatency,
                 onChangeEnd: (_) => state.saveLibrary(),
               ),
+              _CalibrateTile(state: state),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _CalibrateTile extends StatefulWidget {
+  const _CalibrateTile({required this.state});
+
+  final AppState state;
+
+  @override
+  State<_CalibrateTile> createState() => _CalibrateTileState();
+}
+
+class _CalibrateTileState extends State<_CalibrateTile> {
+  bool running = false;
+
+  Future<void> _run() async {
+    setState(() => running = true);
+    final (late, error) = await widget.state.calibrate();
+    if (!mounted) return;
+    setState(() => running = false);
+    final String text;
+    if (error != null) {
+      text = error;
+    } else if (late!.abs() < 3) {
+      text = 'Ya estabas alineado con el líder.';
+    } else {
+      text =
+          'Sonabas ${late.abs().round()} ms '
+          '${late > 0 ? 'tarde' : 'antes'}. Ajuste corregido.';
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.mic_none),
+      title: const Text('Calibrar con el líder'),
+      subtitle: Text(
+        running
+            ? 'Escuchando… no toques nada durante 8 segundos.'
+            : 'Con este dispositivo como Seguidor y el líder sonando cerca, '
+                  'el micrófono escucha los dos clicks y ajusta la latencia. '
+                  'Mejor sin otros seguidores sonando y a un tempo moderado.',
+      ),
+      trailing: running
+          ? const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            )
+          : null,
+      onTap: running ? null : _run,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'engine.dart';
@@ -318,4 +319,36 @@ class AppState extends ChangeNotifier {
   }
 
   void saveLibrary() => store.save(library);
+
+  static const _mic = MethodChannel('prronclick/mic');
+
+  /// Lines our clicks up with the leader's by ear: records 8 s while the
+  /// leader plays, then adds the measured lateness to the latency setting.
+  /// Returns the correction in ms, or an error message.
+  Future<(double?, String?)> calibrate() async {
+    if (shareMode != ShareMode.follower ||
+        engine.numPeers() == 0 ||
+        !engine.isPlaying()) {
+      return (null, 'Ponte como Seguidor con el líder sonando.');
+    }
+    if (Platform.isAndroid &&
+        await _mic.invokeMethod<bool>('request') != true) {
+      return (null, 'Hace falta permiso para usar el micrófono.');
+    }
+    if (!engine.calibrationStart()) {
+      return (null, 'No se pudo abrir el micrófono.');
+    }
+    await Future<void>.delayed(const Duration(seconds: 8));
+    final late = engine.calibrationFinish();
+    if (late.isNaN) {
+      return (
+        null,
+        'No se oyeron bien los dos clicks. Acerca el dispositivo al líder, '
+            'sube el volumen y prueba otra vez.',
+      );
+    }
+    setExtraLatency((library.extraLatencyMs + late).clamp(-100, 400));
+    saveLibrary();
+    return (late, null);
+  }
 }
