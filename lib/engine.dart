@@ -35,6 +35,9 @@ class Engine {
           .lookupFunction<Void Function(Int), void Function(int)>(
             'pc_set_beats_per_bar',
           ),
+      setBeatUnit = lib.lookupFunction<Void Function(Int), void Function(int)>(
+        'pc_set_beat_unit',
+      ),
       setExtraLatencyMs = lib
           .lookupFunction<Void Function(Double), void Function(double)>(
             'pc_set_extra_latency_ms',
@@ -140,6 +143,9 @@ class Engine {
   final void Function(double) setTempo;
   final double Function() tempo;
   final void Function(int) setBeatsPerBar;
+
+  /// The meter's lower number: only groups the accents (threes in 6/8).
+  final void Function(int) setBeatUnit;
   final void Function(double) setExtraLatencyMs;
   final double Function() outputLatencyMs;
   final double Function() beat;

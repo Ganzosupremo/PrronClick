@@ -3,6 +3,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'lyrics_view.dart';
+import 'meter_picker.dart';
 import 'song.dart';
 
 class MetronomePage extends StatefulWidget {
@@ -80,9 +82,22 @@ class _MetronomePageState extends State<MetronomePage>
     );
   }
 
+  Future<void> _pickMeter(int beats, int unit) async {
+    final picked = await pickMeter(context, beats, unit);
+    if (picked != null) state.setMeter(picked.$1, picked.$2);
+  }
+
   Widget _build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final canControl = state.canControl;
+    final info = state.showInfo;
+    final lyrics = state.shownSong?.lyrics;
+    // Show the meter the user picked even before its downbeat comes.
+    final shownBeats = pendingBeatsPerBar > 0
+        ? pendingBeatsPerBar
+        : beatsPerBar;
+    final group = accentGroup(beatsPerBar, info.beatUnit);
+    final aboutSong = [?info.key, ?info.note].join(' · ');
     final currentBeat = playing && beat >= 0
         ? (beat - origin).floor() % beatsPerBar
         : -1;
@@ -123,20 +138,37 @@ class _MetronomePageState extends State<MetronomePage>
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < beatsPerBar; i++)
-              Padding(
-                padding: const EdgeInsets.all(6),
-                child: CircleAvatar(
-                  radius: i == 0 ? 18 : 14,
-                  backgroundColor: i == currentBeat
-                      ? scheme.primary
-                      : scheme.surfaceContainerHighest,
+        if (aboutSong.isNotEmpty)
+          Text(
+            aboutSong,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: scheme.tertiary),
+          ),
+        // Long bars (12/8, 16/4) shrink to fit the width.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            children: [
+              for (var i = 0; i < beatsPerBar; i++)
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: CircleAvatar(
+                    // Bigger on the accent, a little bigger where a group of
+                    // three starts in 6/8.
+                    radius: i == 0
+                        ? 18
+                        : group > 0 && i % group == 0
+                        ? 16
+                        : 14,
+                    backgroundColor: i == currentBeat
+                        ? scheme.primary
+                        : scheme.surfaceContainerHighest,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
         SizedBox(
           height: 24,
@@ -207,29 +239,27 @@ class _MetronomePageState extends State<MetronomePage>
         Row(
           children: [
             const Expanded(child: Text('Compás')),
-            DropdownButton<int>(
-              // Show the meter the user picked even before its downbeat comes.
-              value: pendingBeatsPerBar > 0 ? pendingBeatsPerBar : beatsPerBar,
-              // Songs and the leader may use meters outside the short list.
-              items: [
-                for (final n in {
-                  2,
-                  3,
-                  4,
-                  5,
-                  6,
-                  7,
-                  beatsPerBar,
-                  if (pendingBeatsPerBar > 0) pendingBeatsPerBar,
-                }.toList()..sort())
-                  DropdownMenuItem(value: n, child: Text('$n/4')),
-              ],
-              onChanged: canControl ? (n) => state.setBeatsPerBar(n!) : null,
+            OutlinedButton(
+              onPressed: canControl
+                  ? () => _pickMeter(shownBeats, info.beatUnit)
+                  : null,
+              child: Text('$shownBeats/${info.beatUnit}'),
             ),
           ],
         ),
         const SizedBox(height: 8),
         _ToolsPanel(state: state, bar: playing ? bar : 0),
+        if (lyrics != null)
+          Card.outlined(
+            child: ExpansionTile(
+              leading: const Icon(Icons.lyrics_outlined),
+              title: const Text('Letra'),
+              shape: const Border(),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [LyricsView(text: lyrics)],
+            ),
+          ),
       ],
     );
   }

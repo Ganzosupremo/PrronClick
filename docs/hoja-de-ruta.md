@@ -82,6 +82,35 @@
    - Cada setlist puede fijar su propia cuenta (0, 1 o 2) o usar la de
      Ajustes; manda la del setlist mientras está en marcha. Orden en cada
      cambio: pausa en silencio, cuenta, canción.
+8. **Tonalidad, nota, letra, compases libres e importar/exportar** (hecho en
+   código, sin probar en dispositivos):
+   - Cada canción puede llevar tonalidad, una nota de una línea ("Entra la
+     batería sola") y letra. La tonalidad y la nota se ven bajo el nombre en
+     el metrónomo y viajan en el broadcast (`key`, `note`). La letra no cabe
+     en un paquete UDP: el seguidor muestra la de su propia copia de la
+     canción, buscada por nombre.
+   - Letra en formato ChordPro (`lib/chordpro.dart`): acordes `[Am]` en
+     color dentro del verso, `{comment: ...}` resaltado, nombres de sección
+     (`{soc}`, `{sov}`...); el resto de directivas se guarda pero no se ve.
+   - Compás con denominador (2, 4, 8, 16), elegido con dos ruedas
+     (`lib/meter_picker.dart`). Es solo notación: el click suena una vez por
+     pulso y el tempo cuenta esos pulsos (6/8 a 180 BPM = 180 corcheas por
+     minuto). El denominador viaja en el broadcast
+     (`unit`) para que los seguidores vean el mismo compás.
+   - Única excepción: en 6/8, 9/8 y 12/8 el motor añade un acento más
+     suave (1300 Hz) cada tres pulsos (`isSubAccent` en las reglas, con
+     test). Para eso el denominador llega al motor con `pc_set_beat_unit`,
+     de inmediato y sin esperar al compás. 7/8 y otros irregulares solo
+     acentúan el 1.
+   - Canciones: importar y exportar ChordPro (`{title}`, `{key}`, `{tempo}`,
+     `{time}`, `{duration}`, `{meta: nota ...}`, `{new_song}` entre
+     canciones). Un texto sin directivas entra como letra con el nombre del
+     archivo. Importar una canción con el mismo nombre actualiza la nuestra y
+     conserva su id.
+   - Setlists: exportar e importar un JSON con el setlist y sus canciones.
+     Las canciones se emparejan por id y, si no, por nombre; un setlist con
+     el mismo id se actualiza.
+   - Los diálogos de archivo son del paquete `file_picker`.
 
 ## Audio con la pantalla apagada (Android) — hecho
 
@@ -127,8 +156,7 @@
   si se queda sin sonar ni compañeros.
 - Latencia real en Windows (reloj de WASAPI).
 - Más adelante: código de sesión para varias bandas en la misma red,
-  subdivisiones audibles, secciones dentro de una canción, y
-  exportar/importar setlists.
+  subdivisiones audibles y secciones dentro de una canción.
 
 ## Herramientas de desarrollo
 

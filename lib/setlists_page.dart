@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'setlist.dart';
 import 'song.dart';
+import 'transfer.dart';
 
 class SetlistsPage extends StatelessWidget {
   const SetlistsPage({super.key, required this.state, required this.onStarted});
@@ -242,6 +243,11 @@ class SetlistPage extends StatelessWidget {
           appBar: AppBar(
             title: Text(setlist.name),
             actions: [
+              IconButton(
+                tooltip: 'Exportar setlist',
+                icon: const Icon(Icons.ios_share),
+                onPressed: () => exportSetlist(context, state, setlist),
+              ),
               IconButton(
                 tooltip: 'Renombrar',
                 icon: const Icon(Icons.edit_outlined),

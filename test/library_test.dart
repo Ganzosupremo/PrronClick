@@ -104,13 +104,14 @@ void main() {
       song('Vals', 3),
       song('Otra canción', 3),
     ];
-    List<String> names(String q, [int? m]) => [
+    List<String> names(String q, [String? m]) => [
       for (final s in filterSongs(songs, q, m)) s.name,
     ];
     expect(names('CANCION'), ['Canción Triste', 'Otra canción']);
     expect(names('cancion otra'), ['Otra canción']);
-    expect(names('', 3), ['Vals', 'Otra canción']);
-    expect(names('triste', 3), isEmpty);
+    expect(names('', '3/4'), ['Vals', 'Otra canción']);
+    expect(names('triste', '3/4'), isEmpty);
+    expect(names('', '3/8'), isEmpty);
     expect(names('  '), hasLength(3));
   });
 

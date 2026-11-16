@@ -105,6 +105,25 @@ int main() {
     CHECK(near(c[0].beat, 12) && near(c[3].beat, 15));
     CHECK(!isCount(r, 11) && isCount(r, 12) && isCount(r, 15) && !isCount(r, 16));
   }
+  {  // 6/8 from beat 2: lighter accent on the 4th eighth; 6/4 and 7/8 have none.
+    Rules r;
+    r.beatsPerBar = 6;
+    r.beatUnit = 8;
+    r.origin = 2;
+    for (int i = 0; i < 12; ++i) {
+      CHECK(isSubAccent(r, 2 + i) == (i % 6 == 3));
+      CHECK(isAccent(r, 2 + i) == (i % 6 == 0));
+    }
+    r.beatsPerBar = 12;
+    CHECK(isSubAccent(r, 5) && isSubAccent(r, 8) && isSubAccent(r, 11) && !isSubAccent(r, 14));
+    r.beatUnit = 4;
+    CHECK(!isSubAccent(r, 5));
+    r.beatUnit = 8;
+    r.beatsPerBar = 7;
+    CHECK(!isSubAccent(r, 5));
+    r.beatsPerBar = 3;
+    CHECK(!isSubAccent(r, 5));
+  }
   {  // Negative beats (count-in before origin) still work.
     Rules r;
     CHECK(barAt(r, -0.5) == -1);

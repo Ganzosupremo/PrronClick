@@ -45,6 +45,9 @@ PC_API void pc_set_beats_per_bar(int beats);
 PC_API void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUntil,
                        int nextBeatsPerBar, double nextOrigin, double nextMuteBeats,
                        double nextCountBeats);
+// The meter's lower number, applied at once. It only adds a lighter accent
+// every three beats in 6/8, 9/8 and 12/8: tempo and bars count beats.
+PC_API void pc_set_beat_unit(int unit);
 PC_API int pc_beats_per_bar(void);
 PC_API double pc_bar_origin(void);
 PC_API int pc_pending_beats_per_bar(void);  // 0 = none

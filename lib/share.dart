@@ -4,12 +4,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'engine.dart';
+import 'song.dart';
 
 /// What the band sees about the music: the song and, inside a setlist, where
 /// it stands. [changeBeat] is in the beats of whoever holds the object.
 class ShowInfo {
   const ShowInfo({
     this.song,
+    this.key,
+    this.note,
+    this.beatUnit = 4,
     this.setlist,
     this.position = 0,
     this.total = 0,
@@ -18,6 +22,9 @@ class ShowInfo {
   });
 
   final String? song;
+  final String? key; // the song's musical key
+  final String? note; // the song's one-line note for the band
+  final int beatUnit; // the meter's lower number (notation only)
   final String? setlist; // null = no setlist running
   final int position; // 1-based
   final int total;
@@ -26,6 +33,9 @@ class ShowInfo {
 
   Map<String, Object?> toJson() => {
     'song': ?song,
+    'key': ?key,
+    'note': ?note,
+    if (beatUnit != 4) 'unit': beatUnit,
     if (setlist != null)
       'setlist': {
         'name': setlist,
@@ -42,10 +52,17 @@ class ShowInfo {
     String? text(Object? v) =>
         v is String ? (v.length > 80 ? v.substring(0, 80) : v) : null;
     final s = m['setlist'];
-    if (s is! Map) return ShowInfo(song: text(m['song']));
+    final song = text(m['song']), key = text(m['key']), note = text(m['note']);
+    final unit = beatUnits.contains(m['unit']) ? m['unit'] as int : 4;
+    if (s is! Map) {
+      return ShowInfo(song: song, key: key, note: note, beatUnit: unit);
+    }
     final pos = s['pos'], total = s['total'], change = s['change'];
     return ShowInfo(
-      song: text(m['song']),
+      song: song,
+      key: key,
+      note: note,
+      beatUnit: unit,
       setlist: text(s['name']),
       position: pos is int ? pos : 0,
       total: total is int ? total : 0,
@@ -58,6 +75,9 @@ class ShowInfo {
   bool operator ==(Object other) =>
       other is ShowInfo &&
       other.song == song &&
+      other.key == key &&
+      other.note == note &&
+      other.beatUnit == beatUnit &&
       other.setlist == setlist &&
       other.position == position &&
       other.total == total &&
@@ -65,8 +85,17 @@ class ShowInfo {
       other.changeBeat == changeBeat;
 
   @override
-  int get hashCode =>
-      Object.hash(song, setlist, position, total, next, changeBeat);
+  int get hashCode => Object.hash(
+    song,
+    key,
+    note,
+    beatUnit,
+    setlist,
+    position,
+    total,
+    next,
+    changeBeat,
+  );
 }
 
 /// Shares what Link does not: where bars start and when to start playing.

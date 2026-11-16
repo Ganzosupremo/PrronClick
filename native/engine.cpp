@@ -35,10 +35,12 @@ using std::chrono::microseconds;
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kClickSeconds = 0.03;
 constexpr double kAccentHz = 1600.0;
+constexpr double kSubAccentHz = 1300.0;  // start of a group of three in 6/8
 constexpr double kBeatHz = 1000.0;
 // Count-in: the same two-pitch pattern, lower. Kept away from calibration's
 // 2400 Hz band.
 constexpr double kCountAccentHz = 1200.0;
+constexpr double kCountSubAccentHz = 975.0;
 constexpr double kCountHz = 750.0;
 // Link's own bar/phase is unused: peers' beat numbers differ by an integer, so
 // bars come from our origin (shared by the leader) and Link only aligns beats.
@@ -232,9 +234,12 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
         const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
         if (!pc::isMuted(cfg.rules, coord)) {
           e.clickOwn = false;
-          const bool accent = pc::isAccent(cfg.rules, coord);
-          e.clickFreq = pc::isCount(cfg.rules, coord) ? (accent ? kCountAccentHz : kCountHz)
-                                                      : (accent ? kAccentHz : kBeatHz);
+          // 0 = accent, 1 = lighter accent, 2 = plain beat.
+          const int kind = pc::isAccent(cfg.rules, coord) ? 0
+                           : pc::isSubAccent(cfg.rules, coord) ? 1 : 2;
+          static constexpr double kSong[] = {kAccentHz, kSubAccentHz, kBeatHz};
+          static constexpr double kCount[] = {kCountAccentHz, kCountSubAccentHz, kCountHz};
+          e.clickFreq = (pc::isCount(cfg.rules, coord) ? kCount : kSong)[kind];
           e.clickSample = 0;
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
         }
@@ -457,6 +462,12 @@ void pc_set_count_in(int bars) {
 }
 
 double pc_pending_origin(void) { return g ? currentConfig().pendingOrigin : 0.0; }
+
+void pc_set_beat_unit(int unit) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.rules.beatUnit = unit;
+}
 
 void pc_set_displacement(int barsPerStep) {
   if (!g) return;

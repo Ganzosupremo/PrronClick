@@ -79,6 +79,28 @@ class AppState extends ChangeNotifier {
   /// Last song loaded into the metronome (shown above the tempo).
   Song? currentSong;
 
+  /// The meter's lower number. Notation, except that the engine groups the
+  /// accents of 6/8, 9/8 and 12/8 by it.
+  int get beatUnit => _beatUnit;
+  int _beatUnit = 4;
+  set beatUnit(int unit) {
+    _beatUnit = unit;
+    engine.setBeatUnit(unit);
+  }
+
+  /// The song whose lyrics to show: ours, or as a follower our own copy of
+  /// the leader's song, found by name (lyrics are too big to broadcast).
+  Song? get shownSong =>
+      shareMode == ShareMode.follower ? _followedSong : currentSong;
+  Song? _followedSong;
+
+  void _findFollowedSong() {
+    final name = leaderInfo.song;
+    _followedSong = name == null
+        ? null
+        : library.songs.where((s) => fold(s.name) == fold(name)).firstOrNull;
+  }
+
   /// Follower: what the leader announces.
   ShowInfo leaderInfo = const ShowInfo();
 
@@ -86,10 +108,21 @@ class AppState extends ChangeNotifier {
   ShowInfo get showInfo {
     if (shareMode == ShareMode.follower) return leaderInfo;
     final setlist = activeSetlist;
-    if (setlist == null) return ShowInfo(song: currentSong?.name);
+    final song = currentSong;
+    if (setlist == null) {
+      return ShowInfo(
+        song: song?.name,
+        key: song?.key,
+        note: song?.note,
+        beatUnit: beatUnit,
+      );
+    }
     final songs = setlistSongs, i = setlistIndex;
     return ShowInfo(
-      song: currentSong?.name,
+      song: song?.name,
+      key: song?.key,
+      note: song?.note,
+      beatUnit: beatUnit,
       setlist: setlist.name,
       position: i + 1,
       total: songs.length,
@@ -129,7 +162,9 @@ class AppState extends ChangeNotifier {
 
   /// Meter picked by hand. In a setlist the song keeps its end, rounded up to
   /// a whole bar of the new meter.
-  void setBeatsPerBar(int beats) {
+  void setMeter(int beats, int unit) {
+    beatUnit = unit;
+    notifyListeners();
     engine.setBeatsPerBar(beats);
     if (activeSetlist != null && _changeBeat != null && engine.isPlaying()) {
       _resumeEnd = _changeBeat;
@@ -142,11 +177,30 @@ class AppState extends ChangeNotifier {
   void _load(Song song) {
     engine.setTempo(song.bpm);
     engine.setBeatsPerBar(song.beatsPerBar);
+    beatUnit = song.beatUnit;
     currentSong = song;
     notifyListeners();
   }
 
+  /// Adds songs read from a file; returns how many.
+  int importSongs(List<Song> songs) {
+    songs.forEach(library.mergeSong);
+    _libraryChanged();
+    return songs.length;
+  }
+
+  /// Adds or updates a setlist read from a file; null if it is not one.
+  Setlist? importSetlist(Object? json) {
+    final setlist = library.importSetlist(json);
+    if (setlist == null) return null;
+    // Its songs or order may have changed under a running setlist.
+    if (activeSetlist != null) stopSetlist();
+    _libraryChanged();
+    return setlist;
+  }
+
   void _libraryChanged() {
+    _findFollowedSong();
     notifyListeners();
     store.save(library);
   }
@@ -250,7 +304,10 @@ class AppState extends ChangeNotifier {
       if (beat >= change) {
         _changeBeat = null;
         setlistIndex = _changeIndex;
-        if (setlistIndex < songs.length) currentSong = songs[setlistIndex];
+        if (setlistIndex < songs.length) {
+          currentSong = songs[setlistIndex];
+          beatUnit = currentSong!.beatUnit;
+        }
         notifyListeners();
       }
       return;
@@ -281,6 +338,8 @@ class AppState extends ChangeNotifier {
     engine.setLinkEnabled(mode != ShareMode.solo);
     shareMode = mode;
     leaderInfo = const ShowInfo();
+    _followedSong = null;
+    engine.setBeatUnit(beatUnit); // back to ours after following a leader
     if (mode == ShareMode.follower && activeSetlist != null) stopSetlist();
     notifyListeners();
     _channel?.close();
@@ -297,6 +356,8 @@ class AppState extends ChangeNotifier {
           onInfo: (info) {
             if (info == leaderInfo) return;
             leaderInfo = info;
+            engine.setBeatUnit(info.beatUnit);
+            _findFollowedSong();
             notifyListeners();
           },
         ),

@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'meter_picker.dart';
 import 'song.dart';
 
 class SongsPage extends StatefulWidget {
@@ -18,7 +19,7 @@ class SongsPage extends StatefulWidget {
 
 class _SongsPageState extends State<SongsPage> {
   final search = TextEditingController();
-  int? meter; // filter; null = all
+  String? meter; // filter, e.g. "3/4"; null = all
 
   AppState get state => widget.state;
 
@@ -102,8 +103,7 @@ class _SongsPageState extends State<SongsPage> {
           }
           final shown = filterSongs(songs, search.text, meter);
           final filtering = shown.length != songs.length;
-          final meters = {for (final s in songs) s.beatsPerBar}.toList()
-            ..sort();
+          final meters = {for (final s in songs) s.meter}.toList()..sort();
           Widget tile(Song song, int index) => ListTile(
             key: ValueKey(song.id),
             // Dragging only makes sense on the full list.
@@ -158,7 +158,7 @@ class _SongsPageState extends State<SongsPage> {
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            label: Text('$m/4'),
+                            label: Text(m),
                             selected: meter == m,
                             onSelected: (on) =>
                                 setState(() => meter = on ? m : null),
@@ -224,13 +224,32 @@ class _SongEditorState extends State<SongEditor> {
     },
   );
   late int beatsPerBar = widget.song?.beatsPerBar ?? 4;
+  late int beatUnit = widget.song?.beatUnit ?? 4;
+  late final key = TextEditingController(text: widget.song?.key);
+  late final note = TextEditingController(text: widget.song?.note);
+  late final lyrics = TextEditingController(text: widget.song?.lyrics);
 
   @override
   void dispose() {
     name.dispose();
     bpm.dispose();
     duration.dispose();
+    key.dispose();
+    note.dispose();
+    lyrics.dispose();
     super.dispose();
+  }
+
+  static String? orNull(String text) =>
+      text.trim().isEmpty ? null : text.trimRight();
+
+  Future<void> _pickMeter() async {
+    final picked = await pickMeter(context, beatsPerBar, beatUnit);
+    if (picked == null) return;
+    setState(() {
+      beatsPerBar = picked.$1;
+      beatUnit = picked.$2;
+    });
   }
 
   void _save() {
@@ -247,7 +266,11 @@ class _SongEditorState extends State<SongEditor> {
       ..name = name.text.trim()
       ..bpm = double.parse(bpm.text)
       ..beatsPerBar = beatsPerBar
-      ..durationSeconds = parseDuration(duration.text);
+      ..beatUnit = beatUnit
+      ..durationSeconds = parseDuration(duration.text)
+      ..key = orNull(key.text)
+      ..note = orNull(note.text)
+      ..lyrics = orNull(lyrics.text);
     Navigator.pop(context, song);
   }
 
@@ -282,14 +305,14 @@ class _SongEditorState extends State<SongEditor> {
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              initialValue: beatsPerBar,
-              decoration: const InputDecoration(labelText: 'Compás'),
-              items: [
-                for (var n = 1; n <= 12; n++)
-                  DropdownMenuItem(value: n, child: Text('$n/4')),
+            Row(
+              children: [
+                const Expanded(child: Text('Compás')),
+                OutlinedButton(
+                  onPressed: _pickMeter,
+                  child: Text('$beatsPerBar/$beatUnit'),
+                ),
               ],
-              onChanged: (n) => beatsPerBar = n!,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -311,6 +334,42 @@ class _SongEditorState extends State<SongEditor> {
                   return 'Usa minutos:segundos, p. ej. 3:30';
                 }
               },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: key,
+              decoration: const InputDecoration(
+                labelText: 'Tonalidad (opcional)',
+                hintText: 'Am',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: note,
+              maxLength: 80, // what the leader's broadcast carries
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nota (opcional)',
+                hintText: 'Entra la batería sola',
+                helperText: 'Se ve en el metrónomo, también en los seguidores.',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: lyrics,
+              minLines: 6,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Letra (opcional)',
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(),
+                helperMaxLines: 3,
+                helperText:
+                    'Formato ChordPro: acordes entre corchetes, [Am], y '
+                    'avisos como {comment: Entra toda la banda}.',
+              ),
             ),
           ],
         ),

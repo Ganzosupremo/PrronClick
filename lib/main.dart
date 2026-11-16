@@ -6,6 +6,7 @@ import 'metronome_page.dart';
 import 'setlists_page.dart';
 import 'settings_page.dart';
 import 'songs_page.dart';
+import 'transfer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +57,24 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text(titles[tab]),
         actions: [
+          if (tab == 1)
+            PopupMenuButton<bool>(
+              tooltip: 'Importar o exportar',
+              icon: const Icon(Icons.import_export),
+              onSelected: (import) => import
+                  ? importSongs(context, widget.state)
+                  : exportSongs(context, widget.state),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: true, child: Text('Importar canciones')),
+                PopupMenuItem(value: false, child: Text('Exportar canciones')),
+              ],
+            ),
+          if (tab == 2)
+            IconButton(
+              tooltip: 'Importar setlist',
+              icon: const Icon(Icons.file_open_outlined),
+              onPressed: () => importSetlist(context, widget.state),
+            ),
           IconButton(
             tooltip: 'Ajustes',
             icon: const Icon(Icons.settings_outlined),

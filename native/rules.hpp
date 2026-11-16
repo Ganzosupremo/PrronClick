@@ -9,6 +9,7 @@ namespace pc {
 
 struct Rules {
   int beatsPerBar = 4;
+  int beatUnit = 4;      // the meter's lower number; only groups the accents
   double origin = 0.0;   // beat where bar 0 starts
   int displaceBars = 0;  // 0 = off; else shift a 16th every N bars
   int gapPlay = 0;       // tempo trainer: bars with click...
@@ -45,6 +46,14 @@ inline bool isMuted(const Rules& r, double coord) {
 
 inline bool isAccent(const Rules& r, double coord) {
   return mod(floorDiv(coord - r.origin), r.beatsPerBar) == 0;
+}
+
+// Compound meters (6/8, 9/8, 12/8) are felt in threes: a lighter accent starts
+// each group after the first. Same rule as accentGroup in lib/song.dart.
+inline bool isSubAccent(const Rules& r, double coord) {
+  if (r.beatUnit != 8 || r.beatsPerBar <= 3 || r.beatsPerBar % 3 != 0) return false;
+  const long inBar = mod(floorDiv(coord - r.origin), r.beatsPerBar);
+  return inBar != 0 && inBar % 3 == 0;
 }
 
 inline bool crosses(const Rules& r, double prev, double beat) {

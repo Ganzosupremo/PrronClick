@@ -24,6 +24,16 @@ void main() {
     expect(got.changeBeat, 33);
   });
 
+  test('key, note and beat unit reach followers', () {
+    const info = ShowInfo(song: 'Dos', key: 'Am', note: 'Sola', beatUnit: 8);
+    expect(ShowInfo.fromMessage(wire(info.toJson()), 0), info);
+    const inSet = ShowInfo(song: 'Dos', key: 'Am', beatUnit: 8, setlist: 'B');
+    expect(ShowInfo.fromMessage(wire(inSet.toJson()), 0), inSet);
+    // An older leader says nothing; junk falls back to x/4.
+    expect(ShowInfo.fromMessage(wire({'song': 'Uno'}), 0).beatUnit, 4);
+    expect(ShowInfo.fromMessage(wire({'unit': 5, 'key': 3}), 0).beatUnit, 4);
+  });
+
   test('no setlist, last song, and junk from the network', () {
     expect(ShowInfo.fromMessage(wire({'song': 'Uno'}), 0).setlist, isNull);
     final last = ShowInfo.fromMessage(

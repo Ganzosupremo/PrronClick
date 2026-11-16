@@ -57,6 +57,57 @@ class Library {
   final List<Song> songs;
   final List<Setlist> setlists;
 
+  /// Adds an imported song. If we already have it (same id, else same name)
+  /// ours takes its content and keeps its id, which setlists refer to.
+  /// Returns the song now in the library.
+  Song mergeSong(Song song) {
+    final old =
+        songs.where((s) => s.id == song.id).firstOrNull ??
+        songs.where((s) => fold(s.name) == fold(song.name)).firstOrNull;
+    if (old == null) {
+      songs.add(song);
+      return song;
+    }
+    return old..copyFrom(song);
+  }
+
+  /// A setlist as a file for another device: the setlist and its songs.
+  Map<String, Object?> exportSetlist(Setlist setlist) => {
+    'prronclick': 'setlist',
+    'setlist': setlist.toJson(),
+    'songs': [for (final s in setlist.songsFrom(songs).toSet()) s.toJson()],
+  };
+
+  /// Reads [exportSetlist]'s output: merges its songs, then adds the setlist
+  /// or updates ours with the same id. Returns null if [json] is not one.
+  Setlist? importSetlist(Object? json) {
+    if (json is! Map || json['prronclick'] != 'setlist') return null;
+    final incoming = Setlist.fromJson(json['setlist']);
+    if (incoming == null) return null;
+    final ids = <String, String>{}; // id in the file -> id here
+    final list = json['songs'];
+    for (final j in list is List ? list : const []) {
+      final song = Song.fromJson(j);
+      if (song != null) ids[song.id] = mergeSong(song).id;
+    }
+    final songIds = [for (final id in incoming.songIds) ?ids[id]];
+    final old = setlists.where((s) => s.id == incoming.id).firstOrNull;
+    if (old == null) {
+      incoming.songIds
+        ..clear()
+        ..addAll(songIds);
+      setlists.add(incoming);
+      return incoming;
+    }
+    return old
+      ..name = incoming.name
+      ..songIds.clear()
+      ..songIds.addAll(songIds)
+      ..autoAdvance = incoming.autoAdvance
+      ..pauseBars = incoming.pauseBars
+      ..countInBars = incoming.countInBars;
+  }
+
   Map<String, Object?> toJson() => {
     'version': 1,
     'settings': {
