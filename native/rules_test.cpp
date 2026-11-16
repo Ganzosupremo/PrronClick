@@ -85,6 +85,14 @@ int main() {
     CHECK(c.size() == 6);
     CHECK(c[0].accent && !c[1].accent && !c[2].accent && c[3].accent);
   }
+  {  // Pause: two silent bars from the origin, then clicks again.
+    Rules r;
+    r.origin = 8;
+    r.muteUntil = 16;
+    const auto c = run(r, 8, 24);
+    CHECK(c.size() == 8);
+    CHECK(near(c[0].beat, 16) && c[0].accent);
+  }
   {  // Negative beats (count-in before origin) still work.
     Rules r;
     CHECK(barAt(r, -0.5) == -1);

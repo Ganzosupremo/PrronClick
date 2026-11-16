@@ -25,6 +25,7 @@ class _MetronomePageState extends State<MetronomePage>
   int beatsPerBar = 4;
   double origin = 0;
   int pendingBeatsPerBar = 0;
+  double muteUntil = 0;
 
   AppState get state => widget.state;
 
@@ -40,6 +41,7 @@ class _MetronomePageState extends State<MetronomePage>
         beat = e.beat();
         beatsPerBar = e.beatsPerBar();
         origin = e.barOrigin();
+        muteUntil = e.muteUntil();
         // A meter picked by hand starts on the next downbeat: show it right
         // away. A setlist's next song is further off and is not shown.
         final pending = e.pendingBeatsPerBar();
@@ -74,6 +76,7 @@ class _MetronomePageState extends State<MetronomePage>
         ? (beat - origin).floor() % beatsPerBar
         : -1;
     final bar = ((beat - origin) / beatsPerBar).floor();
+    final paused = playing && beat >= origin && beat < muteUntil;
     final muted =
         playing &&
         state.library.practiceTools &&
@@ -125,9 +128,9 @@ class _MetronomePageState extends State<MetronomePage>
         ),
         SizedBox(
           height: 24,
-          child: muted
+          child: muted || paused
               ? Text(
-                  'Silencio',
+                  paused ? 'Pausa' : 'Silencio',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: scheme.outline),
                 )
@@ -196,9 +199,7 @@ class _MetronomePageState extends State<MetronomePage>
                 }.toList()..sort())
                   DropdownMenuItem(value: n, child: Text('$n/4')),
               ],
-              onChanged: canControl
-                  ? (n) => state.engine.setBeatsPerBar(n!)
-                  : null,
+              onChanged: canControl ? (n) => state.setBeatsPerBar(n!) : null,
             ),
           ],
         ),

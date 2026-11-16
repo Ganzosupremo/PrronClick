@@ -15,6 +15,9 @@ class ShareChannel {
 
   static const port = 20809;
   static const _interval = Duration(milliseconds: 300);
+  // Changes (start, new meter or song) go out at once: a follower started by
+  // Link must not keep stale bars until the next periodic message.
+  static const _poll = Duration(milliseconds: 20);
 
   final Engine engine;
   final RawDatagramSocket socket;
@@ -37,7 +40,18 @@ class ShareChannel {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0)
       ..broadcastEnabled = true;
     final channel = ShareChannel._(engine, socket, songName: songName);
-    channel._timer = Timer.periodic(_interval, (_) => channel._send());
+    final sinceSent = Stopwatch()..start();
+    String? lastState;
+    channel._timer = Timer.periodic(_poll, (_) {
+      final e = channel.engine;
+      final state =
+          '${e.isPlaying()} ${e.beatsPerBar()} ${e.barOrigin()} '
+          '${e.pendingBeatsPerBar()} ${e.pendingOrigin()} ${e.muteUntil()}';
+      if (state == lastState && sinceSent.elapsed < _interval) return;
+      lastState = state;
+      sinceSent.reset();
+      channel._send();
+    });
     return channel;
   }
 
@@ -73,7 +87,13 @@ class ShareChannel {
       'playing': engine.isPlaying(),
       'bpb': engine.beatsPerBar(),
       'origin': engine.barOrigin(),
-      if (next > 0) 'next': {'bpb': next, 'origin': engine.pendingOrigin()},
+      'mute': engine.muteUntil(),
+      if (next > 0)
+        'next': {
+          'bpb': next,
+          'origin': engine.pendingOrigin(),
+          'mute': engine.pendingMuteBeats(),
+        },
       'song': ?song,
     };
     // shortcut: limited broadcast goes out one interface only; send per
@@ -100,12 +120,14 @@ class ShareChannel {
     if (beat is! num || playing is! bool || bpb is! int || origin is! num) {
       return;
     }
+    final mute = m['mute'] is num ? m['mute'] as num : origin;
     var nextBpb = 0;
-    num nextOrigin = 0;
+    num nextOrigin = 0, nextMute = 0;
     final next = m['next'];
     if (next is Map && next['bpb'] is int && next['origin'] is num) {
       nextBpb = next['bpb'] as int;
       nextOrigin = next['origin'] as num;
+      if (next['mute'] case final num n) nextMute = n;
     }
     // Without a Link connection our beats are unrelated to the leader's.
     if (engine.numPeers() == 0) return;
@@ -130,8 +152,10 @@ class ShareChannel {
     engine.setBar(
       bpb,
       origin.toDouble() + k,
+      mute.toDouble() + k,
       nextBpb,
       nextOrigin.toDouble() + k,
+      nextMute.toDouble(),
     );
   }
 }

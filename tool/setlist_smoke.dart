@@ -1,6 +1,6 @@
 // Checks scheduled song changes in the engine: at beat 8 switch from
-// 120 BPM 4/4 to 60 BPM 3/4 without a jump in the beat, then stop at the end
-// of the next two bars.
+// 120 BPM 4/4 to 60 BPM 3/4 (first bar silent) without a jump in the beat,
+// then stop at the end of the next two bars.
 //   dart --packages=.dart_tool/package_config.json tool/setlist_smoke.dart <path to engine lib>
 import 'dart:io';
 
@@ -12,7 +12,7 @@ void main(List<String> args) async {
   e.setTempo(120);
   e.setBeatsPerBar(4);
   e.setPlaying(true);
-  e.scheduleSong(8, 60, 3);
+  e.scheduleSong(8, 60, 3, 1);
 
   // (seconds, beat) samples around the change.
   final samples = <(double, double)>[];
@@ -26,6 +26,7 @@ void main(List<String> args) async {
   check((e.tempo() - 60).abs() < 0.01, 'tempo ${e.tempo()} != 60');
   check(e.beatsPerBar() == 3, 'meter ${e.beatsPerBar()} != 3');
   check(e.barOrigin() == 8, 'origin ${e.barOrigin()} != 8');
+  check(e.muteUntil() == 11, 'pause ends at ${e.muteUntil()}, not 11');
 
   // Fit a line on each side and find where each reaches beat 8: the same
   // moment if the beat did not jump.
@@ -48,7 +49,7 @@ void main(List<String> args) async {
   final jumpMs = (after - before) * 1000;
   check(jumpMs.abs() < 5, 'beat jumped ${jumpMs.toStringAsFixed(1)} ms');
 
-  e.scheduleSong(14, 0, 3); // last song ends after two bars of 3/4
+  e.scheduleSong(14, 0, 3, 0); // last song ends after two bars of 3/4
   while (e.isPlaying() && clock.elapsed.inSeconds < 15) {
     await Future.delayed(const Duration(milliseconds: 20));
   }

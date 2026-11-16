@@ -48,9 +48,16 @@ class Engine {
       ),
       setBar = lib
           .lookupFunction<
-            Void Function(Int, Double, Int, Double),
-            void Function(int, double, int, double)
+            Void Function(Int, Double, Double, Int, Double, Double),
+            void Function(int, double, double, int, double, double)
           >('pc_set_bar'),
+      muteUntil = lib.lookupFunction<Double Function(), double Function()>(
+        'pc_mute_until',
+      ),
+      pendingMuteBeats = lib
+          .lookupFunction<Double Function(), double Function()>(
+            'pc_pending_mute_beats',
+          ),
       beatsPerBar = lib.lookupFunction<Int Function(), int Function()>(
         'pc_beats_per_bar',
       ),
@@ -69,8 +76,8 @@ class Engine {
           ),
       scheduleSong = lib
           .lookupFunction<
-            Void Function(Double, Double, Int),
-            void Function(double, double, int)
+            Void Function(Double, Double, Int, Int),
+            void Function(double, double, int, int)
           >('pc_schedule_song'),
       setGapTrainer = lib
           .lookupFunction<Void Function(Int, Int), void Function(int, int)>(
@@ -102,8 +109,11 @@ class Engine {
   final double Function() outputLatencyMs;
   final double Function() beat;
 
-  /// (beatsPerBar, origin, nextBeatsPerBar or 0, nextOrigin)
-  final void Function(int, double, int, double) setBar;
+  /// (beatsPerBar, origin, muteUntil, nextBeatsPerBar or 0, nextOrigin,
+  /// nextMuteBeats)
+  final void Function(int, double, double, int, double, double) setBar;
+  final double Function() muteUntil;
+  final double Function() pendingMuteBeats;
   final int Function() beatsPerBar;
   final double Function() barOrigin;
   final int Function() pendingBeatsPerBar;
@@ -111,6 +121,6 @@ class Engine {
   final void Function(int) setDisplacement;
   final void Function(int, int) setGapTrainer;
 
-  /// (beat, bpm or 0 to stop there, beatsPerBar)
-  final void Function(double, double, int) scheduleSong;
+  /// (beat, bpm or 0 to stop there, beatsPerBar, pauseBars)
+  final void Function(double, double, int, int) scheduleSong;
 }

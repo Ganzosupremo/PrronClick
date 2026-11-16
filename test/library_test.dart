@@ -111,7 +111,12 @@ void main() {
       Library(
         songs: [a, b],
         setlists: [
-          Setlist(id: 's', name: 'Gig', songIds: ['b', 'x', 'a', 'b']),
+          Setlist(
+            id: 's',
+            name: 'Gig',
+            songIds: ['b', 'x', 'a', 'b'],
+            pauseBars: 2,
+          ),
         ],
       ),
     );
@@ -119,6 +124,7 @@ void main() {
     final set = lib.setlists.single;
     expect(set.name, 'Gig');
     expect(set.autoAdvance, isTrue);
+    expect(set.pauseBars, 2);
     expect([for (final s in set.songsFrom(lib.songs)) s.id], ['b', 'a', 'b']);
   });
 

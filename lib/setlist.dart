@@ -7,6 +7,7 @@ class Setlist {
     required this.name,
     List<String>? songIds,
     this.autoAdvance = true,
+    this.pauseBars = 0,
   }) : songIds = songIds ?? [];
 
   /// Returns null for an entry that is not a usable setlist.
@@ -23,6 +24,10 @@ class Setlist {
             if (s is String) s,
       ],
       autoAdvance: json['autoAdvance'] != false,
+      pauseBars: switch (json['pauseBars']) {
+        final int n when n >= 0 && n <= 16 => n,
+        _ => 0,
+      },
     );
   }
 
@@ -31,11 +36,15 @@ class Setlist {
   final List<String> songIds; // a song may appear more than once
   bool autoAdvance;
 
+  /// Silent bars before each song that follows another automatically.
+  int pauseBars;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
     'songIds': songIds,
     'autoAdvance': autoAdvance,
+    'pauseBars': pauseBars,
   };
 
   /// The setlist's songs, skipping ids whose song no longer exists.

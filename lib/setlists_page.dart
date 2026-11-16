@@ -251,6 +251,34 @@ class SetlistPage extends StatelessWidget {
                   state.saveSetlist(setlist);
                 },
               ),
+              ListTile(
+                enabled: setlist.autoAdvance,
+                title: const Text('Pausa entre canciones'),
+                subtitle: const Text(
+                  'Compases en silencio, al tempo de la siguiente, antes de '
+                  'que empiece.',
+                ),
+                trailing: DropdownButton<int>(
+                  value: setlist.pauseBars,
+                  items: [
+                    for (final n in const [0, 1, 2, 4, 8])
+                      DropdownMenuItem(
+                        value: n,
+                        child: Text(switch (n) {
+                          0 => 'No',
+                          1 => '1 compás',
+                          _ => '$n compases',
+                        }),
+                      ),
+                  ],
+                  onChanged: setlist.autoAdvance
+                      ? (n) {
+                          setlist.pauseBars = n!;
+                          state.saveSetlist(setlist);
+                        }
+                      : null,
+                ),
+              ),
               const Divider(),
               ReorderableListView(
                 shrinkWrap: true,

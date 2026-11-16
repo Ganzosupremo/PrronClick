@@ -81,6 +81,16 @@ class AppState extends ChangeNotifier {
     _load(song);
   }
 
+  /// Meter picked by hand. In a setlist the song keeps its end, rounded up to
+  /// a whole bar of the new meter.
+  void setBeatsPerBar(int beats) {
+    engine.setBeatsPerBar(beats);
+    if (activeSetlist != null && _changeBeat != null && engine.isPlaying()) {
+      _resumeEnd = _changeBeat;
+      _changeBeat = null;
+    }
+  }
+
   /// Sets tempo and meter from the song. While playing, the meter switches on
   /// the next downbeat.
   void _load(Song song) {
@@ -115,6 +125,7 @@ class AppState extends ChangeNotifier {
   double? get changeBeat => _changeBeat;
   double? _changeBeat;
   int _changeIndex = 0;
+  double? _resumeEnd; // song end to keep after a manual meter change
   Timer? _setlistTimer;
 
   List<Song> get setlistSongs =>
@@ -126,6 +137,7 @@ class AppState extends ChangeNotifier {
     activeSetlist = setlist;
     setlistIndex = index;
     _changeBeat = null;
+    _resumeEnd = null;
     _load(songs[index]);
     _setlistTimer ??= Timer.periodic(
       const Duration(milliseconds: 100),
@@ -136,6 +148,7 @@ class AppState extends ChangeNotifier {
   void stopSetlist() {
     activeSetlist = null;
     _changeBeat = null;
+    _resumeEnd = null;
     _setlistTimer?.cancel();
     _setlistTimer = null;
     notifyListeners();
@@ -144,6 +157,7 @@ class AppState extends ChangeNotifier {
   /// Jumps to song [index]: now if stopped, else on the next downbeat.
   void goToSong(int index) {
     if (index < 0 || index >= setlistSongs.length) return;
+    _resumeEnd = null;
     if (!engine.isPlaying()) {
       setlistIndex = index;
       _changeBeat = null;
@@ -159,12 +173,13 @@ class AppState extends ChangeNotifier {
     return origin + (((engine.beat() - origin) / bpb).floor() + 1) * bpb;
   }
 
-  void _schedule(int index, double beat) {
+  void _schedule(int index, double beat, {int pauseBars = 0}) {
     final songs = setlistSongs;
     if (index < songs.length) {
-      engine.scheduleSong(beat, songs[index].bpm, songs[index].beatsPerBar);
+      final song = songs[index];
+      engine.scheduleSong(beat, song.bpm, song.beatsPerBar, pauseBars);
     } else {
-      engine.scheduleSong(beat, 0, engine.beatsPerBar()); // end of the setlist
+      engine.scheduleSong(beat, 0, engine.beatsPerBar(), 0); // end of setlist
     }
     _changeBeat = beat;
     _changeIndex = index;
@@ -176,6 +191,7 @@ class AppState extends ChangeNotifier {
     if (!engine.isPlaying()) {
       // Stopped by the user or at the end; playing again restarts this song.
       _changeBeat = null;
+      _resumeEnd = null;
       return;
     }
     final songs = setlistSongs;
@@ -195,11 +211,18 @@ class AppState extends ChangeNotifier {
     if (setlistIndex >= songs.length) return;
     final bars = songBars(songs[setlistIndex]);
     if (bars == null) return; // no duration: the user moves on
-    var end = engine.barOrigin() + bars * engine.beatsPerBar();
+    final origin = engine.barOrigin(), bpb = engine.beatsPerBar();
+    // A song reached automatically starts after its pause.
+    final start = engine.muteUntil() > origin ? engine.muteUntil() : origin;
+    var end = start + bars * bpb;
+    if (_resumeEnd case final kept?) {
+      end = origin + ((kept - origin) / bpb).ceil() * bpb;
+      _resumeEnd = null;
+    }
     // Already past the end (auto-advance turned on late): change soon instead
     // of pivoting the tempo in the past.
     if (end <= beat + 0.5) end = _nextDownbeat();
-    _schedule(setlistIndex + 1, end);
+    _schedule(setlistIndex + 1, end, pauseBars: setlist.pauseBars);
     notifyListeners();
   }
 

@@ -23,7 +23,11 @@
    exacto (`pc_schedule_song`) y al final del setlist se para. Botones de
    anterior/siguiente (cambian en el próximo compás). El broadcast añade el
    nombre de la canción para los seguidores.
-   - Pendiente: pausa entre canciones y tramo silenciado.
+   - Pausa opcional entre canciones: compases en silencio al tempo de la
+     siguiente (tramo silenciado `muteUntil` en las reglas del click, también
+     compartido con los seguidores).
+   - Comprobado con un seguidor sonando: sigue el cambio de canción con la
+     fase del compás igual a la del líder.
 5. **Calibración automática de latencia:** el líder escucha con su micrófono
    los clicks de cada seguidor, los sitúa en la rejilla de Link y le envía la
    corrección por el broadcast. Así los dispositivos que no informan de su

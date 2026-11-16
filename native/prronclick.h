@@ -33,17 +33,23 @@ PC_API double pc_tempo(void);
 // leader broadcasts these values and followers set them with pc_set_bar.
 // While playing, a new meter starts on the next downbeat.
 PC_API void pc_set_beats_per_bar(int beats);
-// nextBeatsPerBar = 0 means no change is scheduled.
-PC_API void pc_set_bar(int beatsPerBar, double origin, int nextBeatsPerBar, double nextOrigin);
+// nextBeatsPerBar = 0 means no change is scheduled. Beats from origin up to
+// muteUntil are silent (a setlist pause); nextMuteBeats is the same for the
+// scheduled change, counted from nextOrigin.
+PC_API void pc_set_bar(int beatsPerBar, double origin, double muteUntil, int nextBeatsPerBar,
+                       double nextOrigin, double nextMuteBeats);
 PC_API int pc_beats_per_bar(void);
 PC_API double pc_bar_origin(void);
 PC_API int pc_pending_beats_per_bar(void);  // 0 = none
 PC_API double pc_pending_origin(void);
+PC_API double pc_mute_until(void);
+PC_API double pc_pending_mute_beats(void);
 
 // Setlists (leader or solo): at `beat`, switch to a new song: tempo and meter
-// change on that downbeat. bpm <= 0 stops playback there instead (last song).
+// change on that downbeat, and its first pauseBars bars are silent.
+// bpm <= 0 stops playback there instead (last song).
 // Replaces any pending change; a later meter change replaces this one.
-PC_API void pc_schedule_song(double beat, double bpm, int beatsPerBar);
+PC_API void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars);
 
 // Practice tools, local to this device; 0 turns each off.
 // Shift the click a 16th note every barsPerStep bars: 1, e, &, a, 1...
