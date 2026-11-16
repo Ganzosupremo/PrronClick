@@ -14,6 +14,7 @@ struct Rules {
   int gapPlay = 0;       // tempo trainer: bars with click...
   int gapMute = 0;       // ...then bars of silence; 0 = off
   double muteUntil = 0;  // silent from origin up to this beat (setlist pause)
+  double countUntil = 0; // count-in: after the pause, another pitch up to here
 };
 
 inline long floorDiv(double x) { return static_cast<long>(std::floor(x)); }
@@ -31,8 +32,13 @@ inline double clickCoord(const Rules& r, double beat) {
   return beat - step * 0.25;
 }
 
+inline bool isCount(const Rules& r, double coord) {
+  return coord >= r.origin && coord >= r.muteUntil && coord < r.countUntil;
+}
+
 inline bool isMuted(const Rules& r, double coord) {
   if (coord >= r.origin && coord < r.muteUntil) return true;
+  if (isCount(r, coord)) return false;  // the tempo trainer never eats the count-in
   if (r.gapPlay <= 0 || r.gapMute <= 0) return false;
   return mod(barAt(r, coord), r.gapPlay + r.gapMute) >= r.gapPlay;
 }

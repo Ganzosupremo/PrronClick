@@ -14,6 +14,7 @@ class Library {
     this.gapTrainer = false,
     this.gapPlay = 4,
     this.gapMute = 2,
+    this.countInBars = 0,
     List<Song>? songs,
     List<Setlist>? setlists,
   }) : songs = songs ?? [],
@@ -32,6 +33,10 @@ class Library {
       gapTrainer: settings['gapTrainer'] == true,
       gapPlay: bars(settings['gapPlay'], 4),
       gapMute: bars(settings['gapMute'], 2),
+      countInBars: switch (settings['countInBars']) {
+        final int n when n >= 0 && n <= 2 => n,
+        _ => 0,
+      },
       songs: [
         for (final s in (json['songs'] as List?) ?? const []) ?Song.fromJson(s),
       ],
@@ -48,6 +53,7 @@ class Library {
   bool gapTrainer;
   int gapPlay;
   int gapMute;
+  int countInBars; // 0, 1 or 2
   final List<Song> songs;
   final List<Setlist> setlists;
 
@@ -60,6 +66,7 @@ class Library {
       'gapTrainer': gapTrainer,
       'gapPlay': gapPlay,
       'gapMute': gapMute,
+      'countInBars': countInBars,
     },
     'songs': [for (final s in songs) s.toJson()],
     'setlists': [for (final s in setlists) s.toJson()],

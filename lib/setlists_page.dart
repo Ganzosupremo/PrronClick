@@ -303,6 +303,33 @@ class SetlistPage extends StatelessWidget {
                       : null,
                 ),
               ),
+              ListTile(
+                title: const Text('Cuenta de entrada'),
+                subtitle: const Text(
+                  'Compases de click en otro tono antes de cada canción, '
+                  'después de la pausa.',
+                ),
+                trailing: DropdownButton<int>(
+                  // -1 = no own value: follow the app setting.
+                  value: setlist.countInBars ?? -1,
+                  items: [
+                    DropdownMenuItem(
+                      value: -1,
+                      child: Text(switch (state.library.countInBars) {
+                        0 => 'Ajustes (no)',
+                        final n => 'Ajustes ($n)',
+                      }),
+                    ),
+                    const DropdownMenuItem(value: 0, child: Text('No')),
+                    const DropdownMenuItem(value: 1, child: Text('1 compás')),
+                    const DropdownMenuItem(value: 2, child: Text('2 compases')),
+                  ],
+                  onChanged: (n) {
+                    setlist.countInBars = n == -1 ? null : n;
+                    state.saveSetlist(setlist);
+                  },
+                ),
+              ),
               const Divider(),
               ReorderableListView(
                 shrinkWrap: true,

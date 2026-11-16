@@ -93,6 +93,18 @@ int main() {
     CHECK(c.size() == 8);
     CHECK(near(c[0].beat, 16) && c[0].accent);
   }
+  {  // Count-in: one bar after a one-bar pause, even where the trainer mutes.
+    Rules r;
+    r.origin = 8;
+    r.muteUntil = 12;
+    r.countUntil = 16;
+    r.gapPlay = 1;
+    r.gapMute = 3;
+    const auto c = run(r, 8, 24);
+    CHECK(c.size() == 4);  // bar 0 paused, bar 1 counted, bars 2-3 trainer-muted
+    CHECK(near(c[0].beat, 12) && near(c[3].beat, 15));
+    CHECK(!isCount(r, 11) && isCount(r, 12) && isCount(r, 15) && !isCount(r, 16));
+  }
   {  // Negative beats (count-in before origin) still work.
     Rules r;
     CHECK(barAt(r, -0.5) == -1);

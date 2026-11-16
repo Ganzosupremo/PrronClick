@@ -8,6 +8,7 @@ class Setlist {
     List<String>? songIds,
     this.autoAdvance = true,
     this.pauseBars = 0,
+    this.countInBars,
   }) : songIds = songIds ?? [];
 
   /// Returns null for an entry that is not a usable setlist.
@@ -28,6 +29,10 @@ class Setlist {
         final int n when n >= 0 && n <= 16 => n,
         _ => 0,
       },
+      countInBars: switch (json['countInBars']) {
+        final int n when n >= 0 && n <= 2 => n,
+        _ => null,
+      },
     );
   }
 
@@ -39,12 +44,16 @@ class Setlist {
   /// Silent bars before each song that follows another automatically.
   int pauseBars;
 
+  /// Count-in bars before each song, after the pause; null = the app setting.
+  int? countInBars;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
     'songIds': songIds,
     'autoAdvance': autoAdvance,
     'pauseBars': pauseBars,
+    'countInBars': ?countInBars,
   };
 
   /// The setlist's songs, skipping ids whose song no longer exists.

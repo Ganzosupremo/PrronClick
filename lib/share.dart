@@ -111,6 +111,7 @@ class ShareChannel {
       final state =
           '${e.isPlaying()} ${e.beatsPerBar()} ${e.barOrigin()} '
           '${e.pendingBeatsPerBar()} ${e.pendingOrigin()} ${e.muteUntil()} '
+          '${e.countUntil()} '
           '${info?.call().toJson()}';
       if (state == lastState && sinceSent.elapsed < _interval) return;
       lastState = state;
@@ -152,11 +153,13 @@ class ShareChannel {
       'bpb': engine.beatsPerBar(),
       'origin': engine.barOrigin(),
       'mute': engine.muteUntil(),
+      'count': engine.countUntil(),
       if (next > 0)
         'next': {
           'bpb': next,
           'origin': engine.pendingOrigin(),
           'mute': engine.pendingMuteBeats(),
+          'count': engine.pendingCountBeats(),
         },
       ...?info?.call().toJson(),
     };
@@ -185,13 +188,16 @@ class ShareChannel {
       return;
     }
     final mute = m['mute'] is num ? m['mute'] as num : origin;
+    // A leader without count-in (older app) sends none: origin means no count.
+    final count = m['count'] is num ? m['count'] as num : origin;
     var nextBpb = 0;
-    num nextOrigin = 0, nextMute = 0;
+    num nextOrigin = 0, nextMute = 0, nextCount = 0;
     final next = m['next'];
     if (next is Map && next['bpb'] is int && next['origin'] is num) {
       nextBpb = next['bpb'] as int;
       nextOrigin = next['origin'] as num;
       if (next['mute'] case final num n) nextMute = n;
+      if (next['count'] case final num n) nextCount = n;
     }
     // Without a Link connection our beats are unrelated to the leader's.
     if (engine.numPeers() == 0) return;
@@ -216,9 +222,11 @@ class ShareChannel {
       bpb,
       origin.toDouble() + k,
       mute.toDouble() + k,
+      count.toDouble() + k,
       nextBpb,
       nextOrigin.toDouble() + k,
       nextMute.toDouble(),
+      nextCount.toDouble(),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'song.dart';
 
 class MetronomePage extends StatefulWidget {
   const MetronomePage({super.key, required this.state});
@@ -26,6 +27,7 @@ class _MetronomePageState extends State<MetronomePage>
   double origin = 0;
   int pendingBeatsPerBar = 0;
   double muteUntil = 0;
+  double countUntil = 0;
 
   AppState get state => widget.state;
 
@@ -42,6 +44,7 @@ class _MetronomePageState extends State<MetronomePage>
         beatsPerBar = e.beatsPerBar();
         origin = e.barOrigin();
         muteUntil = e.muteUntil();
+        countUntil = e.countUntil();
         // A meter picked by hand starts on the next downbeat: show it right
         // away. A setlist's next song is further off and is not shown.
         final pending = e.pendingBeatsPerBar();
@@ -61,6 +64,14 @@ class _MetronomePageState extends State<MetronomePage>
 
   void setTempo(double bpm) => state.engine.setTempo(bpm.roundToDouble());
 
+  final _taps = <int>[];
+  final _tapClock = Stopwatch()..start();
+
+  void _tap() {
+    final bpm = tapBpm(_taps, _tapClock.elapsedMilliseconds);
+    if (bpm != null) setTempo(bpm);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -77,6 +88,7 @@ class _MetronomePageState extends State<MetronomePage>
         : -1;
     final bar = ((beat - origin) / beatsPerBar).floor();
     final paused = playing && beat >= origin && beat < muteUntil;
+    final counting = playing && !paused && beat >= origin && beat < countUntil;
     final muted =
         playing &&
         state.library.practiceTools &&
@@ -128,9 +140,13 @@ class _MetronomePageState extends State<MetronomePage>
         ),
         SizedBox(
           height: 24,
-          child: muted || paused
+          child: muted || paused || counting
               ? Text(
-                  paused ? 'Pausa' : 'Silencio',
+                  paused
+                      ? 'Pausa'
+                      : counting
+                      ? 'Cuenta de entrada'
+                      : 'Silencio',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: scheme.outline),
                 )
@@ -167,6 +183,13 @@ class _MetronomePageState extends State<MetronomePage>
           value: tempo.clamp(20, 300),
           label: tempo.round().toString(),
           onChanged: canControl ? setTempo : null,
+        ),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: canControl ? _tap : null,
+            icon: const Icon(Icons.touch_app_outlined),
+            label: const Text('Tap tempo'),
+          ),
         ),
         const SizedBox(height: 16),
         Center(

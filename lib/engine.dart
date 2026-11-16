@@ -55,9 +55,37 @@ class Engine {
           ),
       setBar = lib
           .lookupFunction<
-            Void Function(Int, Double, Double, Int, Double, Double),
-            void Function(int, double, double, int, double, double)
+            Void Function(
+              Int,
+              Double,
+              Double,
+              Double,
+              Int,
+              Double,
+              Double,
+              Double,
+            ),
+            void Function(
+              int,
+              double,
+              double,
+              double,
+              int,
+              double,
+              double,
+              double,
+            )
           >('pc_set_bar'),
+      countUntil = lib.lookupFunction<Double Function(), double Function()>(
+        'pc_count_until',
+      ),
+      pendingCountBeats = lib
+          .lookupFunction<Double Function(), double Function()>(
+            'pc_pending_count_beats',
+          ),
+      setCountIn = lib.lookupFunction<Void Function(Int), void Function(int)>(
+        'pc_set_count_in',
+      ),
       muteUntil = lib.lookupFunction<Double Function(), double Function()>(
         'pc_mute_until',
       ),
@@ -121,9 +149,17 @@ class Engine {
   final bool Function() calibrationStart;
   final double Function() calibrationFinish;
 
-  /// (beatsPerBar, origin, muteUntil, nextBeatsPerBar or 0, nextOrigin,
-  /// nextMuteBeats)
-  final void Function(int, double, double, int, double, double) setBar;
+  /// (beatsPerBar, origin, muteUntil, countUntil, nextBeatsPerBar or 0,
+  /// nextOrigin, nextMuteBeats, nextCountBeats)
+  final void Function(int, double, double, double, int, double, double, double)
+  setBar;
+
+  /// Count-in: beats after the pause up to this one sound at another pitch.
+  final double Function() countUntil;
+  final double Function() pendingCountBeats;
+
+  /// Count-in bars before each song we start; 0 = none.
+  final void Function(int) setCountIn;
   final double Function() muteUntil;
   final double Function() pendingMuteBeats;
   final int Function() beatsPerBar;

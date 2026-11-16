@@ -86,6 +86,16 @@ void main() {
     expect(formatDuration(185), '3:05');
   });
 
+  test('tap tempo averages recent taps and starts over after a gap', () {
+    final taps = <int>[];
+    expect(tapBpm(taps, 0), isNull);
+    expect(tapBpm(taps, 500), 120);
+    expect(tapBpm(taps, 1000), 120);
+    expect(tapBpm(taps, 5000), isNull); // 4 s later: a new count
+    expect(tapBpm(taps, 5750), 80);
+    expect(tapBpm([0], 10), 300); // clamped
+  });
+
   test('song search ignores case and accents; meter filter', () {
     Song song(String name, int bpb) =>
         Song(id: name, name: name, bpm: 100, beatsPerBar: bpb);
@@ -116,12 +126,16 @@ void main() {
             name: 'Gig',
             songIds: ['b', 'x', 'a', 'b'],
             pauseBars: 2,
+            countInBars: 0,
           ),
+          Setlist(id: 't', name: 'Otro'),
         ],
       ),
     );
     final lib = await store.load();
-    final set = lib.setlists.single;
+    final set = lib.setlists.first;
+    expect(set.countInBars, 0); // an explicit "none", not the app setting
+    expect(lib.setlists.last.countInBars, isNull);
     expect(set.name, 'Gig');
     expect(set.autoAdvance, isTrue);
     expect(set.pauseBars, 2);

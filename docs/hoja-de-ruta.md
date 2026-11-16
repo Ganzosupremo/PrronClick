@@ -79,6 +79,9 @@
      canción. Es un tramo `countUntil` en las reglas del click, compartido
      en el broadcast (`count`): los seguidores oyen la cuenta del líder, no
      la de su ajuste. El entrenador de tempo no la silencia.
+   - Cada setlist puede fijar su propia cuenta (0, 1 o 2) o usar la de
+     Ajustes; manda la del setlist mientras está en marcha. Orden en cada
+     cambio: pausa en silencio, cuenta, canción.
 
 ## Audio con la pantalla apagada (Android) — hecho
 

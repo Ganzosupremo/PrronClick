@@ -75,6 +75,16 @@ List<Song> filterSongs(List<Song> songs, String query, int? meter) {
   ];
 }
 
+/// Tap tempo: adds a tap at [now] (ms) to [taps] and returns the BPM of the
+/// last few, or null until there are two. A gap over 3 s (20 BPM) starts over.
+double? tapBpm(List<int> taps, int now) {
+  if (taps.isNotEmpty && now - taps.last > 3000) taps.clear();
+  taps.add(now);
+  if (taps.length > 5) taps.removeAt(0);
+  if (taps.length < 2 || now == taps.first) return null;
+  return (60000 * (taps.length - 1) / (now - taps.first)).clamp(20, 300);
+}
+
 String formatDuration(int seconds) =>
     '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 

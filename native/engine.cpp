@@ -36,6 +36,10 @@ constexpr double kPi = 3.14159265358979323846;
 constexpr double kClickSeconds = 0.03;
 constexpr double kAccentHz = 1600.0;
 constexpr double kBeatHz = 1000.0;
+// Count-in: the same two-pitch pattern, lower. Kept away from calibration's
+// 2400 Hz band.
+constexpr double kCountAccentHz = 1200.0;
+constexpr double kCountHz = 750.0;
 // Link's own bar/phase is unused: peers' beat numbers differ by an integer, so
 // bars come from our origin (shared by the leader) and Link only aligns beats.
 constexpr double kQuantum = 1.0;
@@ -48,6 +52,8 @@ struct BarConfig {
   int pendingBeatsPerBar = 4;
   double pendingOrigin = 0.0;
   double pendingMuteBeats = 0.0;  // silent beats from the new origin (pause)
+  double pendingCountBeats = 0.0;  // count-in beats after that pause
+  int countBars = 0;  // count-in for songs this device starts (setting)
   // Setlists: the pending change is a new song, so the tempo changes (or the
   // music stops, if pendingBpm <= 0) on the same beat. Leader only: followers
   // get the tempo through Link.
@@ -60,6 +66,7 @@ struct BarConfig {
       rules.beatsPerBar = pendingBeatsPerBar;
       rules.origin = pendingOrigin;
       rules.muteUntil = pendingOrigin + pendingMuteBeats;
+      rules.countUntil = rules.muteUntil + pendingCountBeats;
       hasPending = false;
     }
   }
@@ -225,7 +232,9 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
         const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
         if (!pc::isMuted(cfg.rules, coord)) {
           e.clickOwn = false;
-          e.clickFreq = pc::isAccent(cfg.rules, coord) ? kAccentHz : kBeatHz;
+          const bool accent = pc::isAccent(cfg.rules, coord);
+          e.clickFreq = pc::isCount(cfg.rules, coord) ? (accent ? kCountAccentHz : kCountHz)
+                                                      : (accent ? kAccentHz : kBeatHz);
           e.clickSample = 0;
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
         }
@@ -337,6 +346,7 @@ void pc_set_playing(bool playing) {
     std::lock_guard<std::mutex> lock(g->configMutex);
     g->config.rules.origin = 0.0;
     g->config.rules.muteUntil = 0.0;
+    g->config.rules.countUntil = g->config.countBars * g->config.rules.beatsPerBar;
     g->config.hasPending = false;
   } else {
     state.setIsPlaying(false, now);
@@ -369,6 +379,7 @@ void pc_set_beats_per_bar(int beats) {
   if (!state.isPlaying()) {
     c.rules.beatsPerBar = beats;
     c.rules.muteUntil = 0.0;
+    c.rules.countUntil = 0.0;
     c.hasPending = false;
     return;
   }
@@ -378,6 +389,7 @@ void pc_set_beats_per_bar(int beats) {
   c.pendingOrigin = r.origin + (pc::barAt(r, beat) + 1) * r.beatsPerBar;
   c.pendingBeatsPerBar = beats;
   c.pendingMuteBeats = 0.0;
+  c.pendingCountBeats = 0.0;
   c.hasPending = true;
   c.pendingSong = false;
 }
@@ -390,21 +402,25 @@ void pc_schedule_song(double beat, double bpm, int beatsPerBar, int pauseBars) {
   c.pendingOrigin = beat;
   c.pendingBeatsPerBar = std::clamp(beatsPerBar, 1, 16);
   c.pendingMuteBeats = std::max(0, pauseBars) * c.pendingBeatsPerBar;
+  c.pendingCountBeats = bpm > 0.0 ? c.countBars * c.pendingBeatsPerBar : 0.0;
   c.pendingSong = true;
   c.pendingBpm = bpm > 0.0 ? std::clamp(bpm, 20.0, 300.0) : 0.0;
   ++c.songChangeId;
 }
 
-void pc_set_bar(int beatsPerBar, double origin, double muteUntil, int nextBeatsPerBar,
-                double nextOrigin, double nextMuteBeats) {
+void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUntil,
+                int nextBeatsPerBar, double nextOrigin, double nextMuteBeats,
+                double nextCountBeats) {
   if (!g) return;
   std::lock_guard<std::mutex> lock(g->configMutex);
   auto& c = g->config;
   c.rules.beatsPerBar = std::clamp(beatsPerBar, 1, 16);
   c.rules.origin = origin;
   c.rules.muteUntil = muteUntil;
+  c.rules.countUntil = countUntil;
   c.hasPending = nextBeatsPerBar > 0;
   c.pendingMuteBeats = std::max(0.0, nextMuteBeats);
+  c.pendingCountBeats = std::max(0.0, nextCountBeats);
   c.pendingSong = false;
   c.pendingBeatsPerBar = std::clamp(nextBeatsPerBar, 1, 16);
   c.pendingOrigin = nextOrigin;
@@ -431,6 +447,14 @@ int pc_pending_beats_per_bar(void) {
 
 double pc_mute_until(void) { return g ? currentConfig().rules.muteUntil : 0.0; }
 double pc_pending_mute_beats(void) { return g ? currentConfig().pendingMuteBeats : 0.0; }
+double pc_count_until(void) { return g ? currentConfig().rules.countUntil : 0.0; }
+double pc_pending_count_beats(void) { return g ? currentConfig().pendingCountBeats : 0.0; }
+
+void pc_set_count_in(int bars) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.countBars = std::clamp(bars, 0, 4);
+}
 
 double pc_pending_origin(void) { return g ? currentConfig().pendingOrigin : 0.0; }
 

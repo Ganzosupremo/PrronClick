@@ -28,6 +28,22 @@ class SettingsPage extends StatelessWidget {
                 value: lib.practiceTools,
                 onChanged: state.setPracticeTools,
               ),
+              ListTile(
+                title: const Text('Cuenta de entrada'),
+                subtitle: const Text(
+                  'Compases de click en otro tono antes de cada canción. Como '
+                  'Seguidor suena la cuenta del líder.',
+                ),
+                trailing: DropdownButton<int>(
+                  value: lib.countInBars,
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('No')),
+                    DropdownMenuItem(value: 1, child: Text('1 compás')),
+                    DropdownMenuItem(value: 2, child: Text('2 compases')),
+                  ],
+                  onChanged: (n) => state.setCountIn(n!),
+                ),
+              ),
               const Divider(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

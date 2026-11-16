@@ -39,15 +39,23 @@ PC_API double pc_tempo(void);
 PC_API void pc_set_beats_per_bar(int beats);
 // nextBeatsPerBar = 0 means no change is scheduled. Beats from origin up to
 // muteUntil are silent (a setlist pause); nextMuteBeats is the same for the
-// scheduled change, counted from nextOrigin.
-PC_API void pc_set_bar(int beatsPerBar, double origin, double muteUntil, int nextBeatsPerBar,
-                       double nextOrigin, double nextMuteBeats);
+// scheduled change, counted from nextOrigin. After the pause, beats up to
+// countUntil are a count-in (another pitch); nextCountBeats is its length for
+// the scheduled change.
+PC_API void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUntil,
+                       int nextBeatsPerBar, double nextOrigin, double nextMuteBeats,
+                       double nextCountBeats);
 PC_API int pc_beats_per_bar(void);
 PC_API double pc_bar_origin(void);
 PC_API int pc_pending_beats_per_bar(void);  // 0 = none
 PC_API double pc_pending_origin(void);
 PC_API double pc_mute_until(void);
 PC_API double pc_pending_mute_beats(void);
+PC_API double pc_count_until(void);
+PC_API double pc_pending_count_beats(void);
+// Count-in bars before each song this device starts (play, or a setlist
+// change); 0 = none. Followers get the leader's through pc_set_bar.
+PC_API void pc_set_count_in(int bars);
 
 // Setlists (leader or solo): at `beat`, switch to a new song: tempo and meter
 // change on that downbeat, and its first pauseBars bars are silent.

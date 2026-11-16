@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +20,7 @@ enum ShareMode { solo, leader, follower }
 class AppState extends ChangeNotifier {
   AppState._(this.engine, this.store, this.library) : audioOk = engine.init() {
     engine.setExtraLatencyMs(library.extraLatencyMs);
+    _applyCountIn();
     _applyPractice();
     // Playing can start or stop from many places (button, Link, the leader, a
     // setlist's end), so poll it instead of hooking each one.
@@ -153,6 +155,7 @@ class AppState extends ChangeNotifier {
 
   void saveSetlist(Setlist setlist) {
     if (!library.setlists.contains(setlist)) library.setlists.add(setlist);
+    _applyCountIn(); // the running setlist's count-in may have been edited
     _libraryChanged();
   }
 
@@ -182,6 +185,7 @@ class AppState extends ChangeNotifier {
     setlistIndex = index;
     _changeBeat = null;
     _resumeEnd = null;
+    _applyCountIn();
     _load(songs[index]);
     _setlistTimer ??= Timer.periodic(
       const Duration(milliseconds: 100),
@@ -195,6 +199,7 @@ class AppState extends ChangeNotifier {
     _resumeEnd = null;
     _setlistTimer?.cancel();
     _setlistTimer = null;
+    _applyCountIn();
     notifyListeners();
   }
 
@@ -256,8 +261,8 @@ class AppState extends ChangeNotifier {
     final bars = songBars(songs[setlistIndex]);
     if (bars == null) return; // no duration: the user moves on
     final origin = engine.barOrigin(), bpb = engine.beatsPerBar();
-    // A song reached automatically starts after its pause.
-    final start = engine.muteUntil() > origin ? engine.muteUntil() : origin;
+    // The song starts after its pause and count-in, if any.
+    final start = [origin, engine.muteUntil(), engine.countUntil()].reduce(max);
     var end = start + bars * bpb;
     if (_resumeEnd case final kept?) {
       end = origin + ((kept - origin) / bpb).ceil() * bpb;
@@ -332,6 +337,18 @@ class AppState extends ChangeNotifier {
 
   void _practiceChanged() {
     _applyPractice();
+    notifyListeners();
+    store.save(library);
+  }
+
+  /// A running setlist's own count-in wins over the app setting.
+  void _applyCountIn() =>
+      engine.setCountIn(activeSetlist?.countInBars ?? library.countInBars);
+
+  /// Applies to the next song started (play or a setlist change).
+  void setCountIn(int bars) {
+    library.countInBars = bars;
+    _applyCountIn();
     notifyListeners();
     store.save(library);
   }
