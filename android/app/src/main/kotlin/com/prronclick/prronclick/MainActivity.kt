@@ -40,6 +40,24 @@ class MainActivity : FlutterActivity() {
                     requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MIC_REQUEST)
                 }
             }
+        // "keepAlive" (bool): runs PlaybackService while the click plays or is shared.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "prronclick/background")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "keepAlive") return@setMethodCallHandler result.notImplemented()
+                try {
+                    PlaybackService.set(this, call.arguments as Boolean)
+                    result.success(true)
+                } catch (e: IllegalStateException) {
+                    // Android 12+ refuses to start it from the background.
+                    result.success(false)
+                }
+            }
+    }
+
+    override fun onDestroy() {
+        PlaybackService.set(this, false)
+        multicastLock?.release()
+        super.onDestroy()
     }
 
     override fun onRequestPermissionsResult(
@@ -49,11 +67,6 @@ class MainActivity : FlutterActivity() {
         if (requestCode != MIC_REQUEST) return
         micResult?.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
         micResult = null
-    }
-
-    override fun onDestroy() {
-        multicastLock?.release()
-        super.onDestroy()
     }
 
     private companion object {

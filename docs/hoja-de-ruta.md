@@ -69,6 +69,18 @@
      broadcast del compás. Apple tiene que concederlo al equipo antes de
      poder firmar: <https://developer.apple.com/contact/request/networking-multicast>.
 
+## Audio con la pantalla apagada (Android) — hecho
+
+- `PlaybackService`: servicio en primer plano (tipo `mediaPlayback`) con
+  notificación, wake lock parcial y Wi-Fi lock de baja latencia, para que
+  Android no congele la app y Link siga llegando a tiempo.
+- La app lo enciende mientras suena el click o mientras comparte (líder o
+  seguidor: el seguidor tiene que oír cuando arranca el líder). Lo comprueba
+  cada 500 ms porque el play cambia desde muchos sitios.
+- Android 12+ solo deja arrancarlo con la app delante; si se niega, se
+  reintenta. Se cierra al quitar la app de recientes.
+- Comprobado en el Samsung: con la pantalla apagada el click siguió sonando.
+
 ## Comprobado con dispositivos reales
 
 - Link alinea la fase entre dispositivos, pero cada uno numera los pulsos con
@@ -89,7 +101,6 @@
   llamadas entrantes que interrumpen el audio, Bluetooth). Con la sesión
   activa el motor sigue corriendo en segundo plano aunque esté parado; pararlo
   si se queda sin sonar ni compañeros.
-- Audio con la pantalla apagada (foreground service en Android).
 - Latencia real en Windows (reloj de WASAPI).
 - Más adelante: código de sesión para varias bandas en la misma red, cuenta de
   entrada, subdivisiones audibles, secciones dentro de una canción, y

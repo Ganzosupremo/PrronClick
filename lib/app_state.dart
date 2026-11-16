@@ -20,6 +20,26 @@ class AppState extends ChangeNotifier {
   AppState._(this.engine, this.store, this.library) : audioOk = engine.init() {
     engine.setExtraLatencyMs(library.extraLatencyMs);
     _applyPractice();
+    // Playing can start or stop from many places (button, Link, the leader, a
+    // setlist's end), so poll it instead of hooking each one.
+    if (Platform.isAndroid) {
+      Timer.periodic(const Duration(milliseconds: 500), (_) => _keepAlive());
+    }
+  }
+
+  static const _background = MethodChannel('prronclick/background');
+  bool _alive = false;
+
+  /// Android: a foreground service keeps the click going with the screen off
+  /// while it plays, or while shared (a follower must hear the leader start).
+  Future<void> _keepAlive() async {
+    final want = engine.isPlaying() || shareMode != ShareMode.solo;
+    if (want == _alive) return;
+    _alive = want;
+    // Refused from the background (Android 12+): retry on the next tick.
+    if (await _background.invokeMethod<bool>('keepAlive', want) != true) {
+      _alive = !want;
+    }
   }
 
   static Future<AppState> load() async {
