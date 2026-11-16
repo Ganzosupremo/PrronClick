@@ -5,13 +5,77 @@ import 'dart:io';
 
 import 'engine.dart';
 
+/// What the band sees about the music: the song and, inside a setlist, where
+/// it stands. [changeBeat] is in the beats of whoever holds the object.
+class ShowInfo {
+  const ShowInfo({
+    this.song,
+    this.setlist,
+    this.position = 0,
+    this.total = 0,
+    this.next,
+    this.changeBeat,
+  });
+
+  final String? song;
+  final String? setlist; // null = no setlist running
+  final int position; // 1-based
+  final int total;
+  final String? next; // next song's name; null = last song
+  final double? changeBeat; // when the next song (or the end) starts
+
+  Map<String, Object?> toJson() => {
+    'song': ?song,
+    if (setlist != null)
+      'setlist': {
+        'name': setlist,
+        'pos': position,
+        'total': total,
+        'next': ?next,
+        'change': ?changeBeat,
+      },
+  };
+
+  /// Parses a leader's message, shifting its beat by [k] into ours. Strings
+  /// are capped: they come from the network.
+  static ShowInfo fromMessage(Map<Object?, Object?> m, int k) {
+    String? text(Object? v) =>
+        v is String ? (v.length > 80 ? v.substring(0, 80) : v) : null;
+    final s = m['setlist'];
+    if (s is! Map) return ShowInfo(song: text(m['song']));
+    final pos = s['pos'], total = s['total'], change = s['change'];
+    return ShowInfo(
+      song: text(m['song']),
+      setlist: text(s['name']),
+      position: pos is int ? pos : 0,
+      total: total is int ? total : 0,
+      next: text(s['next']),
+      changeBeat: change is num ? change.toDouble() + k : null,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ShowInfo &&
+      other.song == song &&
+      other.setlist == setlist &&
+      other.position == position &&
+      other.total == total &&
+      other.next == next &&
+      other.changeBeat == changeBeat;
+
+  @override
+  int get hashCode =>
+      Object.hash(song, setlist, position, total, next, changeBeat);
+}
+
 /// Shares what Link does not: where bars start and when to start playing.
 ///
 /// Link keeps tempo and beat phase in sync, but each peer numbers beats
 /// differently (off by a whole number k). The leader broadcasts its beat and
 /// bar origin; each follower works out k and shifts the origin by it.
 class ShareChannel {
-  ShareChannel._(this.engine, this.socket, {this.songName, this.onSongName});
+  ShareChannel._(this.engine, this.socket, {this.info, this.onInfo});
 
   static const port = 20809;
   static const _interval = Duration(milliseconds: 300);
@@ -23,11 +87,11 @@ class ShareChannel {
   final RawDatagramSocket socket;
   Timer? _timer;
 
-  /// Leader: name of the song being played, if any.
-  final String? Function()? songName;
+  /// Leader: what to tell followers about the song and setlist.
+  final ShowInfo Function()? info;
 
-  /// Follower: called with the leader's song name (null = none).
-  final void Function(String?)? onSongName;
+  /// Follower: called with what the leader says about the song and setlist.
+  final void Function(ShowInfo)? onInfo;
 
   // Follower: recent k values (median rejects a packet delayed past a beat).
   final _ks = <int>[];
@@ -35,18 +99,19 @@ class ShareChannel {
 
   static Future<ShareChannel> leader(
     Engine engine, {
-    String? Function()? songName,
+    ShowInfo Function()? info,
   }) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0)
       ..broadcastEnabled = true;
-    final channel = ShareChannel._(engine, socket, songName: songName);
+    final channel = ShareChannel._(engine, socket, info: info);
     final sinceSent = Stopwatch()..start();
     String? lastState;
     channel._timer = Timer.periodic(_poll, (_) {
       final e = channel.engine;
       final state =
           '${e.isPlaying()} ${e.beatsPerBar()} ${e.barOrigin()} '
-          '${e.pendingBeatsPerBar()} ${e.pendingOrigin()} ${e.muteUntil()}';
+          '${e.pendingBeatsPerBar()} ${e.pendingOrigin()} ${e.muteUntil()} '
+          '${info?.call().toJson()}';
       if (state == lastState && sinceSent.elapsed < _interval) return;
       lastState = state;
       sinceSent.reset();
@@ -57,14 +122,14 @@ class ShareChannel {
 
   static Future<ShareChannel> follower(
     Engine engine, {
-    void Function(String?)? onSongName,
+    void Function(ShowInfo)? onInfo,
   }) async {
     final socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       port,
       reuseAddress: true,
     );
-    final channel = ShareChannel._(engine, socket, onSongName: onSongName);
+    final channel = ShareChannel._(engine, socket, onInfo: onInfo);
     socket.listen((event) {
       if (event != RawSocketEvent.read) return;
       final datagram = socket.receive();
@@ -80,7 +145,6 @@ class ShareChannel {
 
   void _send() {
     final next = engine.pendingBeatsPerBar();
-    final song = songName?.call();
     final message = {
       'v': 1,
       'beat': engine.beat(),
@@ -94,7 +158,7 @@ class ShareChannel {
           'origin': engine.pendingOrigin(),
           'mute': engine.pendingMuteBeats(),
         },
-      'song': ?song,
+      ...?info?.call().toJson(),
     };
     // shortcut: limited broadcast goes out one interface only; send per
     // interface (subnet broadcast) if a multi-homed leader is not heard.
@@ -131,8 +195,6 @@ class ShareChannel {
     }
     // Without a Link connection our beats are unrelated to the leader's.
     if (engine.numPeers() == 0) return;
-    final song = m['song'];
-    onSongName?.call(song is String ? song : null);
 
     // Starting re-numbers our beats, and so does the leader starting: old k
     // values no longer apply.
@@ -148,6 +210,7 @@ class ShareChannel {
     _ks.add((engine.beat() - beat + 0.05).floor());
     if (_ks.length > 5) _ks.removeAt(0);
     final k = ([..._ks]..sort())[_ks.length ~/ 2];
+    onInfo?.call(ShowInfo.fromMessage(m, k));
 
     engine.setBar(
       bpb,

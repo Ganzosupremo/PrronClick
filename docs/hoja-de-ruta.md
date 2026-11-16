@@ -22,7 +22,8 @@
    al acabar la duración de cada una. El tempo y el compás cambian en el pulso
    exacto (`pc_schedule_song`) y al final del setlist se para. Botones de
    anterior/siguiente (cambian en el próximo compás). El broadcast añade el
-   nombre de la canción para los seguidores.
+   nombre de la canción y el estado del setlist: los seguidores ven la misma
+   tarjeta (setlist, posición, qué sigue y cuándo), sin los botones.
    - Pausa opcional entre canciones: compases en silencio al tempo de la
      siguiente (tramo silenciado `muteUntil` en las reglas del click, también
      compartido con los seguidores).

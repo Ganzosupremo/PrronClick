@@ -46,11 +46,24 @@ class AppState extends ChangeNotifier {
   /// Last song loaded into the metronome (shown above the tempo).
   Song? currentSong;
 
-  /// Follower: the song the leader announces.
-  String? leaderSongName;
+  /// Follower: what the leader announces.
+  ShowInfo leaderInfo = const ShowInfo();
 
-  String? get songName =>
-      shareMode == ShareMode.follower ? leaderSongName : currentSong?.name;
+  /// The song and setlist to show: ours, or the leader's when following.
+  ShowInfo get showInfo {
+    if (shareMode == ShareMode.follower) return leaderInfo;
+    final setlist = activeSetlist;
+    if (setlist == null) return ShowInfo(song: currentSong?.name);
+    final songs = setlistSongs, i = setlistIndex;
+    return ShowInfo(
+      song: currentSong?.name,
+      setlist: setlist.name,
+      position: i + 1,
+      total: songs.length,
+      next: i + 1 < songs.length ? songs[i + 1].name : null,
+      changeBeat: _changeBeat,
+    );
+  }
 
   void saveSong(Song song) {
     if (!library.songs.contains(song)) library.songs.add(song);
@@ -231,7 +244,7 @@ class AppState extends ChangeNotifier {
   Future<void> setShareMode(ShareMode mode) async {
     engine.setLinkEnabled(mode != ShareMode.solo);
     shareMode = mode;
-    leaderSongName = null;
+    leaderInfo = const ShowInfo();
     if (mode == ShareMode.follower && activeSetlist != null) stopSetlist();
     notifyListeners();
     _channel?.close();
@@ -241,13 +254,13 @@ class AppState extends ChangeNotifier {
         ShareMode.solo => null,
         ShareMode.leader => await ShareChannel.leader(
           engine,
-          songName: () => currentSong?.name,
+          info: () => showInfo,
         ),
         ShareMode.follower => await ShareChannel.follower(
           engine,
-          onSongName: (name) {
-            if (name == leaderSongName) return;
-            leaderSongName = name;
+          onInfo: (info) {
+            if (info == leaderInfo) return;
+            leaderInfo = info;
             notifyListeners();
           },
         ),

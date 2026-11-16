@@ -86,7 +86,7 @@ class _MetronomePageState extends State<MetronomePage>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (state.activeSetlist != null)
+        if (state.showInfo.setlist != null)
           _SetlistBar(state: state, beat: beat, beatsPerBar: beatsPerBar),
         if (state.shareMode != ShareMode.solo)
           Center(
@@ -102,10 +102,10 @@ class _MetronomePageState extends State<MetronomePage>
           ),
         SizedBox(
           height: 24,
-          child: state.songName == null
+          child: state.showInfo.song == null
               ? null
               : Text(
-                  state.songName!,
+                  state.showInfo.song!,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -223,18 +223,18 @@ class _SetlistBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final songs = state.setlistSongs;
-    final i = state.setlistIndex;
-    final change = state.changeBeat;
-    final next = i + 1 < songs.length ? songs[i + 1].name : null;
+    final info = state.showInfo;
+    final change = info.changeBeat;
+    final next = info.next;
     final String status;
-    if (change != null) {
+    if (change != null && change > beat) {
       final bars = ((change - beat) / beatsPerBar).ceil();
       final when = bars <= 1 ? 'en el próximo compás' : 'en $bars compases';
       status = next == null ? 'Termina $when' : 'Sigue "$next" $when';
     } else {
       status = next == null ? 'Última canción' : 'Siguiente: $next';
     }
+    final i = state.setlistIndex;
     final small = Theme.of(context).textTheme.bodySmall;
     return Card.outlined(
       child: Padding(
@@ -242,37 +242,43 @@ class _SetlistBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${state.activeSetlist!.name} · ${i + 1}/${songs.length}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    status,
-                    style: small,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${info.setlist} · ${info.position}/${info.total}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      status,
+                      style: small,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
-            IconButton(
-              tooltip: 'Canción anterior',
-              onPressed: i > 0 ? () => state.goToSong(i - 1) : null,
-              icon: const Icon(Icons.skip_previous),
-            ),
-            IconButton(
-              tooltip: 'Canción siguiente',
-              onPressed: next != null ? () => state.goToSong(i + 1) : null,
-              icon: const Icon(Icons.skip_next),
-            ),
-            IconButton(
-              tooltip: 'Salir del setlist',
-              onPressed: state.stopSetlist,
-              icon: const Icon(Icons.close),
-            ),
+            // Only whoever runs the setlist moves through it.
+            if (state.canControl) ...[
+              IconButton(
+                tooltip: 'Canción anterior',
+                onPressed: i > 0 ? () => state.goToSong(i - 1) : null,
+                icon: const Icon(Icons.skip_previous),
+              ),
+              IconButton(
+                tooltip: 'Canción siguiente',
+                onPressed: next != null ? () => state.goToSong(i + 1) : null,
+                icon: const Icon(Icons.skip_next),
+              ),
+              IconButton(
+                tooltip: 'Salir del setlist',
+                onPressed: state.stopSetlist,
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ],
         ),
       ),
