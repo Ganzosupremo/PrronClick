@@ -22,8 +22,9 @@ void click(std::vector<float>& x, double rate, double at, double hz, double gain
   }
 }
 
+// shiftBeats moves the leader's clicks from 4 s on (its click displacement).
 void check(const char* name, double lateMs, double leaderGain, double ownGain, double bpm,
-           double expect, double tolerance) {
+           double expect, double tolerance, double shiftBeats = 0) {
   const double rate = 48000, beat = 60.0 / bpm;
   std::vector<float> x(static_cast<size_t>(8 * rate));
   std::mt19937 rng(1);
@@ -32,8 +33,9 @@ void check(const char* name, double lateMs, double leaderGain, double ownGain, d
   for (int b = 0; (b + 1) * beat < 7.5; ++b) {
     const double t = 0.2 + b * beat;
     const double hz = b % 4 == 0 ? 1600.0 : 1000.0;
-    click(x, rate, t, hz, leaderGain);
-    click(x, rate, t + 0.02, hz, leaderGain * 0.3);  // room echo
+    const double lead = t + (t > 4 ? shiftBeats * beat : 0);
+    click(x, rate, lead, hz, leaderGain);
+    click(x, rate, lead + 0.02, hz, leaderGain * 0.3);  // room echo
     click(x, rate, t + lateMs / 1000.0, 0, ownGain);
   }
   const auto c = pc::analyze(x, rate);
@@ -52,5 +54,12 @@ int main() {
   check("late 170 ms (PC)", 170, 0.2, 0.8, 100, 170, 1.0);
   check("quiet leader", 60, 0.05, 0.8, 120, 60, 2.0);
   check("no leader", 30, 0.0, 0.6, 120, NAN, 0);
+  check("leader displaced halfway", 0, 0.3, 0.6, 120, NAN, 0, 0.25);
+  // Seen on a PC: its own tone reached its mic quieter than the leak of the
+  // phone leader's click into our band.
+  check("own quieter than leader", 166, 0.6, 0.03, 120, 166, 1.0);
+  check("own quieter, 60 ms late", 60, 0.6, 0.03, 120, 60, 1.0);
+  // Hidden under the leader's leak: must fail, not report a wrong value.
+  check("own quieter, aligned", 0, 0.6, 0.03, 120, NAN, 0);
   return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

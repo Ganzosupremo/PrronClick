@@ -324,8 +324,9 @@ class AppState extends ChangeNotifier {
 
   /// Lines our clicks up with the leader's by ear: records 8 s while the
   /// leader plays, then adds the measured lateness to the latency setting.
-  /// Returns the correction in ms, or an error message.
-  Future<(double?, String?)> calibrate() async {
+  /// Returns how late we were and the correction actually applied (less if
+  /// the setting hit its limit), or an error message.
+  Future<((double, double)?, String?)> calibrate() async {
     if (shareMode != ShareMode.follower ||
         engine.numPeers() == 0 ||
         !engine.isPlaying()) {
@@ -344,11 +345,13 @@ class AppState extends ChangeNotifier {
       return (
         null,
         'No se oyeron bien los dos clicks. Acerca el dispositivo al líder, '
-            'sube el volumen y prueba otra vez.',
+            'sube el volumen, deja sonar solo al líder (sin click desplazado) '
+            'y prueba otra vez.',
       );
     }
-    setExtraLatency((library.extraLatencyMs + late).clamp(-100, 400));
+    final before = library.extraLatencyMs;
+    setExtraLatency((before + late).clamp(-100, 400));
     saveLibrary();
-    return (late, null);
+    return ((late, library.extraLatencyMs - before), null);
   }
 }

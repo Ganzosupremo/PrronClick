@@ -50,10 +50,10 @@ class BandPass {
   State s[4];
 };
 
-// Onset times (seconds) where the envelope rises through 30% of its loud level.
-// Same bandwidth for every band so their rise times, and so their bias, match.
-inline std::vector<double> onsets(const std::vector<float>& x, double rate,
-                                  std::vector<double> hz) {
+// Level of the loudest of these bands over time. Same bandwidth for every
+// band so their rise times, and so their onset bias, match.
+inline std::vector<float> envelope(const std::vector<float>& x, double rate,
+                                   std::vector<double> hz) {
   constexpr double kBandwidth = 300.0;
   std::vector<BandPass> filters;
   for (double f : hz) filters.emplace_back(f, kBandwidth, rate);
@@ -66,6 +66,11 @@ inline std::vector<double> onsets(const std::vector<float>& x, double rate,
     e += k * (v - e);
     env[i] = static_cast<float>(e);
   }
+  return env;
+}
+
+// Onset times (seconds) where the envelope rises through 30% of its loud level.
+inline std::vector<double> onsets(const std::vector<float>& env, double rate) {
   if (env.empty()) return {};
   std::vector<float> sorted = env;
   const size_t p99 = sorted.size() * 99 / 100;
@@ -86,16 +91,34 @@ inline std::vector<double> onsets(const std::vector<float>& x, double rate,
   return out;
 }
 
+// Most pairs (80%) must sit this close to the median, else there is no one
+// steady offset (leader's click displaced, another follower playing, noise).
+constexpr double kMaxSpreadMs = 5.0;
+
 struct Calibration {
-  double lateMs = NAN;  // NAN = not enough clicks of both kinds heard
+  double lateMs = NAN;  // NAN = not enough clicks heard, or no steady offset
   int pairs = 0;
 };
 
 // shortcut: pairs each own click with the nearest leader click, so errors over
 // half a beat (250 ms at 120 BPM) alias; calibrate at a moderate tempo.
 inline Calibration analyze(const std::vector<float>& x, double rate) {
-  const auto own = onsets(x, rate, {kOwnHz});
-  const auto leader = onsets(x, rate, {1000.0, 1600.0});
+  const auto leaderEnv = envelope(x, rate, {1000.0, 1600.0});
+  auto ownEnv = envelope(x, rate, {kOwnHz});
+  // The leader's sharp attack leaks into our band (7-24% on a phone speaker),
+  // and our tone may reach the mic quieter than that, so take the leak out.
+  // The attack reaches our band ~2 ms before the leader's own band rises:
+  // subtract the leader's level from the next 3 ms. Left in, a leak would also
+  // hide (refractory) a click of ours up to 150 ms after it.
+  constexpr float kLeak = 0.3f;
+  const auto ahead = static_cast<size_t>(0.003 * rate);
+  for (size_t i = 0; i < ownEnv.size(); ++i) {
+    const auto end = leaderEnv.begin() + std::min(i + ahead, leaderEnv.size());
+    const float leak = kLeak * *std::max_element(leaderEnv.begin() + i, end);
+    ownEnv[i] = std::max(0.0f, ownEnv[i] - leak);
+  }
+  const auto own = onsets(ownEnv, rate);
+  const auto leader = onsets(leaderEnv, rate);
   Calibration c;
   if (own.size() < 6 || leader.size() < 6) return c;
   std::vector<double> gaps;
@@ -112,8 +135,13 @@ inline Calibration analyze(const std::vector<float>& x, double rate) {
   }
   if (d.size() < 6) return c;
   std::nth_element(d.begin(), d.begin() + d.size() / 2, d.end());
-  c.lateMs = d[d.size() / 2] * 1000.0 - kOwnOnsetBiasMs;
+  const double median = d[d.size() / 2];
+  const auto steady = std::count_if(d.begin(), d.end(), [&](double v) {
+    return std::abs(v - median) * 1000.0 <= kMaxSpreadMs;
+  });
   c.pairs = static_cast<int>(d.size());
+  if (steady < 0.8 * d.size()) return c;
+  c.lateMs = median * 1000.0 - kOwnOnsetBiasMs;
   return c;
 }
 

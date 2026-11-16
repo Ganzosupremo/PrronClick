@@ -41,6 +41,10 @@
    - Comprobado: el PC con Windows midió 166 ms tarde (a mano habíamos visto
      unos 170); con la corrección, -4 y -5 ms (lo que tarda el sonido entre
      los dos aparatos). El teléfono como seguidor, -3 ms.
+   - Si los clicks no dan un desfase estable (80% a menos de 5 ms de la
+     mediana), no se aplica nada: líder con click desplazado, otro seguidor
+     sonando o ruido. El ataque del click del líder se cuela en nuestra banda;
+     se resta antes de buscar nuestros clicks.
    - Límite: errores de más de medio pulso (250 ms a 120 BPM) se confunden;
      calibrar a un tempo moderado y sin otros seguidores sonando.
 

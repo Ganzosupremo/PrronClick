@@ -84,18 +84,23 @@ class _CalibrateTileState extends State<_CalibrateTile> {
 
   Future<void> _run() async {
     setState(() => running = true);
-    final (late, error) = await widget.state.calibrate();
+    final (result, error) = await widget.state.calibrate();
     if (!mounted) return;
     setState(() => running = false);
     final String text;
-    if (error != null) {
-      text = error;
-    } else if (late!.abs() < 3) {
+    if (result == null) {
+      text = error!;
+    } else if (result.$1.abs() < 3) {
       text = 'Ya estabas alineado con el líder.';
     } else {
-      text =
-          'Sonabas ${late.abs().round()} ms '
-          '${late > 0 ? 'tarde' : 'antes'}. Ajuste corregido.';
+      final (late, applied) = result;
+      final heard =
+          'Sonabas ${late.abs().round()} ms ${late > 0 ? 'tarde' : 'antes'}.';
+      text = (late - applied).abs() < 1
+          ? '$heard Ajuste corregido.'
+          : '$heard El ajuste llegó a su límite '
+                '(${widget.state.library.extraLatencyMs.round()} ms); revisa '
+                'la salida de audio de este dispositivo.';
     }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
