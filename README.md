@@ -4,6 +4,22 @@ Metrónomo para iOS y Android. Un teléfono hace de **líder**, marca el tempo, 
 los demás se conectan por la misma red Wi-Fi para tocar en sincronía.
 La sincronización usa [Ableton Link](https://ableton.github.io/link/).
 
+## Clonar
+
+Ableton Link y miniaudio van como submódulos de git. Para descargarlos al clonar:
+
+```bash
+git clone --recursive <url-del-repo>
+```
+
+Si ya clonaste sin `--recursive`:
+
+```bash
+git submodule update --init --recursive
+```
+
+Sin los submódulos, el motor nativo (`native/`) no compila.
+
 ## Licencia
 
 Copyright (C) 2026 The PrronClick contributors.
