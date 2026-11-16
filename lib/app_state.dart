@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'engine.dart';
 import 'library.dart';
 import 'share.dart';
+import 'song.dart';
 
 enum ShareMode { solo, leader, follower }
 
@@ -39,6 +40,34 @@ class AppState extends ChangeNotifier {
   int get gapMute => library.gapMute;
 
   bool get canControl => shareMode != ShareMode.follower;
+
+  /// Last song loaded into the metronome (shown above the tempo).
+  Song? currentSong;
+
+  void saveSong(Song song) {
+    if (!library.songs.contains(song)) library.songs.add(song);
+    _libraryChanged();
+  }
+
+  void deleteSong(Song song) {
+    library.songs.remove(song);
+    if (currentSong == song) currentSong = null;
+    _libraryChanged();
+  }
+
+  /// Sets tempo and meter from the song. While playing, the meter switches on
+  /// the next downbeat.
+  void loadSong(Song song) {
+    engine.setTempo(song.bpm);
+    engine.setBeatsPerBar(song.beatsPerBar);
+    currentSong = song;
+    notifyListeners();
+  }
+
+  void _libraryChanged() {
+    notifyListeners();
+    store.save(library);
+  }
 
   Future<void> setShareMode(ShareMode mode) async {
     engine.setLinkEnabled(mode != ShareMode.solo);

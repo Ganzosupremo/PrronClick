@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'metronome_page.dart';
 import 'settings_page.dart';
+import 'songs_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,9 +72,9 @@ class _HomePageState extends State<HomePage> {
           index: tab,
           children: [
             MetronomePage(state: widget.state),
-            const _ComingSoon(
-              icon: Icons.library_music_outlined,
-              text: 'Aquí podrás crear canciones con nombre, tempo, compás y duración.',
+            SongsPage(
+              state: widget.state,
+              onLoaded: () => setState(() => tab = 0),
             ),
             const _ComingSoon(
               icon: Icons.queue_music_outlined,
@@ -104,7 +105,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// shortcut: empty tabs until phases 3 (songs) and 4 (setlists).
+// shortcut: empty tab until phase 4 (setlists).
 class _ComingSoon extends StatelessWidget {
   const _ComingSoon({required this.icon, required this.text});
 

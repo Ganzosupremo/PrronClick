@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prronclick/library.dart';
+import 'package:prronclick/song.dart';
 
 void main() {
   late Directory dir;
@@ -30,7 +31,13 @@ void main() {
         gapPlay: 6,
         gapMute: 1,
         songs: [
-          {'name': 'Intro'},
+          Song(
+            id: 'a',
+            name: 'Intro',
+            bpm: 96,
+            beatsPerBar: 3,
+            durationSeconds: 210,
+          ),
         ],
       ),
     );
@@ -41,9 +48,13 @@ void main() {
     expect(lib.gapTrainer, isTrue);
     expect(lib.gapPlay, 6);
     expect(lib.gapMute, 1);
-    expect(lib.songs, [
-      {'name': 'Intro'},
-    ]);
+    expect(lib.songs.single.toJson(), {
+      'id': 'a',
+      'name': 'Intro',
+      'bpm': 96.0,
+      'beatsPerBar': 3,
+      'durationSeconds': 210,
+    });
     expect(File('${store.file.path}.tmp').existsSync(), isFalse);
   });
 
@@ -52,5 +63,25 @@ void main() {
     final lib = await store.load();
     expect(lib.extraLatencyMs, 0);
     expect(File('${store.file.path}.corrupt').existsSync(), isTrue);
+  });
+
+  test('unusable song entries are skipped', () async {
+    await store.file.writeAsString(
+      '{"songs":[{"name":"no id"},'
+      '{"id":"b","name":"Ok","bpm":500,"beatsPerBar":4}]}',
+    );
+    final lib = await store.load();
+    expect(lib.songs.single.name, 'Ok');
+    expect(lib.songs.single.bpm, 300);
+  });
+
+  test('durations parse as m:ss or minutes', () {
+    expect(parseDuration(''), isNull);
+    expect(parseDuration('3:05'), 185);
+    expect(parseDuration('4'), 240);
+    for (final bad in ['1:60', 'abc', '1:', '0:00', '1:2:3']) {
+      expect(() => parseDuration(bad), throwsFormatException, reason: bad);
+    }
+    expect(formatDuration(185), '3:05');
   });
 }

@@ -89,7 +89,17 @@ class _MetronomePageState extends State<MetronomePage>
               }),
             ),
           ),
-        const SizedBox(height: 24),
+        SizedBox(
+          height: 24,
+          child: state.currentSong == null
+              ? null
+              : Text(
+                  state.currentSong!.name,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -164,14 +174,19 @@ class _MetronomePageState extends State<MetronomePage>
             DropdownButton<int>(
               // Show the meter the user picked even before its downbeat comes.
               value: pendingBeatsPerBar > 0 ? pendingBeatsPerBar : beatsPerBar,
+              // Songs and the leader may use meters outside the short list.
               items: [
-                for (final n in [2, 3, 4, 5, 6, 7])
+                for (final n in {
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  beatsPerBar,
+                  if (pendingBeatsPerBar > 0) pendingBeatsPerBar,
+                }.toList()..sort())
                   DropdownMenuItem(value: n, child: Text('$n/4')),
-                if (![2, 3, 4, 5, 6, 7].contains(beatsPerBar))
-                  DropdownMenuItem(
-                    value: beatsPerBar,
-                    child: Text('$beatsPerBar/4'),
-                  ),
               ],
               onChanged: canControl
                   ? (n) => state.engine.setBeatsPerBar(n!)

@@ -16,7 +16,8 @@
      - El seguidor calcula la diferencia entera de pulsos con
        `k = floor(miPulso − pulsoLíder + 0,05)`.
      - El seguidor arranca solo si el líder ya está sonando. Link no lo hace.
-3. **Canciones:** crear, editar y borrar, y cargarlas en el metrónomo.
+3. **Canciones** (hecha): crear, editar y borrar (nombre, tempo, compás y
+   duración opcional), y cargarlas en el metrónomo tocándolas.
 4. **Setlists:** avance automático entre canciones (cambio de tempo y de compás
    en el pulso exacto), pausa entre canciones y tramo silenciado. El broadcast
    añade la canción actual.
