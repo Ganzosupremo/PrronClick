@@ -6,6 +6,10 @@
 
 #if defined(_WIN32)
 #define PC_API __declspec(dllexport)
+#elif defined(__APPLE__)
+// iOS links the engine into the app binary; "used" keeps the linker from
+// dead-stripping symbols only dart:ffi looks up.
+#define PC_API __attribute__((visibility("default"), used))
 #else
 #define PC_API __attribute__((visibility("default")))
 #endif

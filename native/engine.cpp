@@ -20,6 +20,14 @@
 #include <time.h>
 #endif
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#if TARGET_OS_IPHONE
+// Built from ios/Runner/NativeEngine.mm, i.e. as Objective-C++.
+#import <AVFoundation/AVFoundation.h>
+#endif
+
 namespace {
 
 using std::chrono::microseconds;
@@ -118,6 +126,40 @@ bool measuredLatencyMicros(Engine& e, double& out) {
   const double presentNs = timeNs + (nextFrame - framePos) * 1e9 / e.device.playback.internalSampleRate;
   out = (presentNs - nowNanos(CLOCK_MONOTONIC)) / 1000.0;
   return out > 0.0 && out < 500000.0;
+}
+#endif
+
+// Context for every device we open. nullptr (miniaudio's default) everywhere
+// but iOS, where both devices must share one audio session: a capture device
+// on its own switches the session to Record and silences our click while
+// calibrating.
+ma_context* audioContext() {
+#if TARGET_OS_IPHONE
+  static ma_context context;
+  static const bool ok = [] {
+    ma_context_config c = ma_context_config_init();
+    c.coreaudio.sessionCategory = ma_ios_session_category_play_and_record;
+    // Speaker, not the earpiece; Bluetooth headphones; other apps keep playing.
+    c.coreaudio.sessionCategoryOptions = ma_ios_session_category_option_default_to_speaker |
+                                         ma_ios_session_category_option_allow_bluetooth_a2dp |
+                                         ma_ios_session_category_option_mix_with_others;
+    return ma_context_init(nullptr, 0, &c, &context) == MA_SUCCESS;
+  }();
+  return ok ? &context : nullptr;
+#else
+  return nullptr;
+#endif
+}
+
+#if TARGET_OS_IPHONE
+// The session knows the current route (speaker, cable, Bluetooth); the buffer
+// size alone misses the DAC and Bluetooth delay.
+// shortcut: refreshed on init and on play only, so a route change while
+// playing waits for the next start; upgrade to a route-change observer if
+// that bites.
+void refreshOutputLatency(Engine& e) {
+  AVAudioSession* s = [AVAudioSession sharedInstance];
+  e.outputLatencyMicros = 1e6 * (s.outputLatency + s.IOBufferDuration);
 }
 #endif
 
@@ -246,12 +288,12 @@ bool pc_init(void) {
 #endif
   config.pUserData = e.get();
 
-  if (ma_device_init(nullptr, &config, &e->device) != MA_SUCCESS) return false;
+  if (ma_device_init(audioContext(), &config, &e->device) != MA_SUCCESS) return false;
   e->sampleRate = e->device.sampleRate;
   // shortcut: buffer-size estimate of output latency; ignores mixer/DAC delay.
   // Android replaces it with the AAudio-measured latency once audio runs;
-  // Windows and iOS still need their measured latency (WASAPI clock /
-  // AVAudioSession.outputLatency) if clicks land late against other devices.
+  // iOS asks its audio session below; Windows still needs its measured
+  // latency (WASAPI clock) if clicks land late against other devices.
   e->outputLatencyMicros = 1e6 * e->device.playback.internalPeriodSizeInFrames *
                            e->device.playback.internalPeriods /
                            e->device.playback.internalSampleRate;
@@ -259,6 +301,9 @@ bool pc_init(void) {
     ma_device_uninit(&e->device);
     return false;
   }
+#if TARGET_OS_IPHONE
+  refreshOutputLatency(*e);
+#endif
   g = e.release();
   return true;
 }
@@ -284,6 +329,9 @@ void pc_set_playing(bool playing) {
   auto state = g->link.captureAppSessionState();
   const auto now = g->link.clock().micros();
   if (playing) {
+#if TARGET_OS_IPHONE
+    refreshOutputLatency(*g);
+#endif
     // Beat 0 lands on the next shared beat; the bar starts there.
     state.setIsPlayingAndRequestBeatAtTime(true, now, 0.0, kQuantum);
     std::lock_guard<std::mutex> lock(g->configMutex);
@@ -413,9 +461,9 @@ bool pc_calibration_start(void) {
   c.pUserData = g;
   // No noise suppression or gain control: they eat or reshape clicks.
   c.aaudio.inputPreset = ma_aaudio_input_preset_unprocessed;
-  if (ma_device_init(nullptr, &c, &g->capture) != MA_SUCCESS) {
+  if (ma_device_init(audioContext(), &c, &g->capture) != MA_SUCCESS) {
     c.aaudio.inputPreset = ma_aaudio_input_preset_default;  // not on every phone
-    if (ma_device_init(nullptr, &c, &g->capture) != MA_SUCCESS) return false;
+    if (ma_device_init(audioContext(), &c, &g->capture) != MA_SUCCESS) return false;
   }
   g->recording.assign(static_cast<size_t>(15 * g->capture.sampleRate), 0.0f);
   g->recorded = 0;

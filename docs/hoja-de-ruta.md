@@ -48,6 +48,27 @@
    - Límite: errores de más de medio pulso (250 ms a 120 BPM) se confunden;
      calibrar a un tempo moderado y sin otros seguidores sonando.
 
+6. **iOS** (hecho en código, sin probar en un iPhone): el mismo motor C++
+   compilado dentro de la app, sin LinkKit (Link es solo cabeceras y ya
+   soporta Darwin). Dart lo encuentra con `DynamicLibrary.process()`.
+   - `ios/Runner/NativeEngine.mm` incluye `native/engine.cpp` como
+     Objective-C++ y `ios/Runner/Miniaudio.m` incluye miniaudio como
+     Objective-C. Los ajustes (cabeceras, defines de Link, frameworks, no
+     quitar los símbolos `pc_*`) están en `ios/Runner/Engine.xcconfig`.
+   - Una sola sesión de audio `PlayAndRecord` (altavoz, Bluetooth A2DP,
+     mezcla con otras apps) para el click y el micrófono: si no, abrir el
+     micrófono al calibrar pasaría la sesión a `Record` y callaría el click.
+   - Latencia de salida: `AVAudioSession.outputLatency + IOBufferDuration`,
+     al iniciar y en cada play (un cambio de salida en marcha espera al
+     siguiente play).
+   - Permiso de micrófono por el mismo canal `prronclick/mic` que Android.
+   - Info.plist: red local, micrófono y audio en segundo plano (sigue
+     sonando con la pantalla bloqueada).
+   - Entitlement `com.apple.developer.networking.multicast`
+     (`Runner.entitlements`): sin él iOS bloquea el multicast de Link y el
+     broadcast del compás. Apple tiene que concederlo al equipo antes de
+     poder firmar: <https://developer.apple.com/contact/request/networking-multicast>.
+
 ## Comprobado con dispositivos reales
 
 - Link alinea la fase entre dispositivos, pero cada uno numera los pulsos con
@@ -64,11 +85,12 @@
 
 ## Pendiente
 
-- iOS: integrar LinkKit, `NSLocalNetworkUsageDescription` y el entitlement de
-  multicast.
+- iOS: compilar y probar en un iPhone (latencia medida contra la calibración,
+  llamadas entrantes que interrumpen el audio, Bluetooth). Con la sesión
+  activa el motor sigue corriendo en segundo plano aunque esté parado; pararlo
+  si se queda sin sonar ni compañeros.
 - Audio con la pantalla apagada (foreground service en Android).
-- Latencia real en Windows (reloj de WASAPI) y en iOS
-  (`AVAudioSession.outputLatency`).
+- Latencia real en Windows (reloj de WASAPI).
 - Más adelante: código de sesión para varias bandas en la misma red, cuenta de
   entrada, subdivisiones audibles, secciones dentro de una canción, y
   exportar/importar setlists.

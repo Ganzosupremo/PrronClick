@@ -1,0 +1,27 @@
+# Compiles the iOS app (engine included) without signing, since nobody here
+# has a Mac. Signing needs the multicast entitlement from Apple.
+name: iOS build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # Link (+ asio) and miniaudio
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.50.0
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Release, so dead-stripping and symbol stripping run as they do in the store.
+      - run: flutter build ios --release --no-codesign
+      - name: dart:ffi can find the engine
+        run: nm -gU build/ios/iphoneos/Runner.app/Runner | grep -q ' _pc_init$'

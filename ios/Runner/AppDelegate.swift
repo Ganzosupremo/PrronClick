@@ -1,3 +1,4 @@
+import AVFoundation
 import Flutter
 import UIKit
 
@@ -12,5 +13,15 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // "request": asks for the microphone (latency calibration); replies granted or not.
+    FlutterMethodChannel(
+      name: "prronclick/mic", binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    ).setMethodCallHandler { call, result in
+      guard call.method == "request" else { return result(FlutterMethodNotImplemented) }
+      AVAudioSession.sharedInstance().requestRecordPermission { granted in
+        DispatchQueue.main.async { result(granted) }
+      }
+    }
   }
 }

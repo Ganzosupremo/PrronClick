@@ -332,7 +332,7 @@ class AppState extends ChangeNotifier {
         !engine.isPlaying()) {
       return (null, 'Ponte como Seguidor con el líder sonando.');
     }
-    if (Platform.isAndroid &&
+    if ((Platform.isAndroid || Platform.isIOS) &&
         await _mic.invokeMethod<bool>('request') != true) {
       return (null, 'Hace falta permiso para usar el micrófono.');
     }
