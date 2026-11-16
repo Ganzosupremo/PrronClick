@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/scheduler.dart';
 
-import 'engine.dart';
+import 'app_state.dart';
+import 'metronome_page.dart';
+import 'settings_page.dart';
 
-void main() => runApp(const PrronClickApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(PrronClickApp(state: await AppState.load()));
+}
 
 class PrronClickApp extends StatelessWidget {
-  const PrronClickApp({super.key});
+  const PrronClickApp({super.key, required this.state});
+
+  final AppState state;
 
   @override
   Widget build(BuildContext context) {
@@ -19,194 +25,105 @@ class PrronClickApp extends StatelessWidget {
         colorSchemeSeed: Colors.deepOrange,
         brightness: Brightness.dark,
       ),
-      home: const MetronomePage(),
+      home: state.audioOk
+          ? HomePage(state: state)
+          : const Scaffold(
+              body: Center(child: Text('No se pudo abrir la salida de audio.')),
+            ),
     );
   }
 }
 
-enum Mode { solo, leader, follower }
+class HomePage extends StatefulWidget {
+  const HomePage({super.key, required this.state});
 
-class MetronomePage extends StatefulWidget {
-  const MetronomePage({super.key});
+  final AppState state;
 
   @override
-  State<MetronomePage> createState() => _MetronomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MetronomePageState extends State<MetronomePage>
-    with SingleTickerProviderStateMixin {
-  final engine = Engine();
-  late final Ticker ticker;
-  bool audioOk = false;
+class _HomePageState extends State<HomePage> {
+  int tab = 0;
 
-  Mode mode = Mode.solo;
-  int beatsPerBar = 4;
-  double extraLatencyMs = 0;
-
-  // Polled from the engine every frame.
-  double tempo = 120;
-  bool playing = false;
-  int peers = 0;
-  double beat = 0;
-
-  bool get canControl => mode != Mode.follower;
-
-  @override
-  void initState() {
-    super.initState();
-    audioOk = engine.init();
-    ticker = createTicker((_) {
-      if (!audioOk) return;
-      setState(() {
-        tempo = engine.tempo();
-        playing = engine.isPlaying();
-        peers = engine.numPeers();
-        beat = engine.beat();
-      });
-    })..start();
-  }
-
-  @override
-  void dispose() {
-    ticker.dispose();
-    engine.shutdown();
-    super.dispose();
-  }
-
-  void setMode(Mode m) {
-    engine.setLinkEnabled(m != Mode.solo);
-    setState(() => mode = m);
-  }
-
-  void setTempo(double bpm) => engine.setTempo(bpm.roundToDouble());
+  static const titles = ['Metrónomo', 'Canciones', 'Setlists'];
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (!audioOk) {
-      return const Scaffold(
-        body: Center(child: Text('No se pudo abrir la salida de audio.')),
-      );
-    }
-    final currentBeat = playing && beat >= 0 ? beat.floor() % beatsPerBar : -1;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('PrronClick')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            SegmentedButton<Mode>(
-              segments: const [
-                ButtonSegment(value: Mode.solo, label: Text('Solo')),
-                ButtonSegment(value: Mode.leader, label: Text('Líder')),
-                ButtonSegment(value: Mode.follower, label: Text('Seguidor')),
-              ],
-              selected: {mode},
-              onSelectionChanged: (s) => setMode(s.first),
-            ),
-            const SizedBox(height: 8),
-            Text(switch (mode) {
-              Mode.solo => 'Sin conexión',
-              Mode.leader => 'Líder · $peers conectado(s)',
-              Mode.follower =>
-                peers == 0 ? 'Buscando líder…' : 'Siguiendo al líder',
-            }, textAlign: TextAlign.center),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < beatsPerBar; i++)
-                  Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: CircleAvatar(
-                      radius: i == 0 ? 18 : 14,
-                      backgroundColor: i == currentBeat
-                          ? scheme.primary
-                          : scheme.surfaceContainerHighest,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.filledTonal(
-                  tooltip: 'Bajar tempo',
-                  onPressed: canControl ? () => setTempo(tempo - 1) : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: Text(
-                    tempo.round().toString(),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displayLarge,
-                  ),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Subir tempo',
-                  onPressed: canControl ? () => setTempo(tempo + 1) : null,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const Text('BPM', textAlign: TextAlign.center),
-            Slider(
-              min: 20,
-              max: 300,
-              value: tempo.clamp(20, 300),
-              label: tempo.round().toString(),
-              onChanged: canControl ? setTempo : null,
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: FloatingActionButton.large(
-                tooltip: playing ? 'Parar' : 'Empezar',
-                onPressed: canControl
-                    ? () => engine.setPlaying(!playing)
-                    : null,
-                child: Icon(playing ? Icons.stop : Icons.play_arrow),
+      appBar: AppBar(
+        title: Text(titles[tab]),
+        actions: [
+          IconButton(
+            tooltip: 'Ajustes',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsPage(state: widget.state),
               ),
             ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                const Expanded(child: Text('Compás')),
-                DropdownButton<int>(
-                  value: beatsPerBar,
-                  items: [
-                    for (final n in [2, 3, 4, 5, 6, 7])
-                      DropdownMenuItem(value: n, child: Text('$n/4')),
-                  ],
-                  onChanged: (n) {
-                    engine.setBeatsPerBar(n!);
-                    setState(() => beatsPerBar = n);
-                  },
-                ),
-              ],
+          ),
+        ],
+      ),
+      body: SafeArea(
+        // IndexedStack keeps the metronome running while other tabs show.
+        child: IndexedStack(
+          index: tab,
+          children: [
+            MetronomePage(state: widget.state),
+            const _ComingSoon(
+              icon: Icons.library_music_outlined,
+              text: 'Aquí podrás crear canciones con nombre, tempo, compás y duración.',
             ),
+            const _ComingSoon(
+              icon: Icons.queue_music_outlined,
+              text: 'Aquí podrás armar setlists con tus canciones.',
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (i) => setState(() => tab = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.timer_outlined),
+            label: 'Metrónomo',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.library_music_outlined),
+            label: 'Canciones',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.queue_music_outlined),
+            label: 'Setlists',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// shortcut: empty tabs until phases 3 (songs) and 4 (setlists).
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 48, color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 16),
-            Text('Ajuste de latencia: ${extraLatencyMs.round()} ms'),
-            Text(
-              'Latencia de salida compensada: ${engine.outputLatencyMs().toStringAsFixed(1)} ms',
-              style: const TextStyle(fontSize: 12),
-            ),
-            const Text(
-              'Súbelo si tu click suena tarde respecto a los demás (p. ej. con auriculares Bluetooth).',
-              style: TextStyle(fontSize: 12),
-            ),
-            Slider(
-              min: 0,
-              max: 400,
-              divisions: 80,
-              value: extraLatencyMs,
-              onChanged: (v) {
-                engine.setExtraLatencyMs(v);
-                setState(() => extraLatencyMs = v);
-              },
-            ),
+            Text(text, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text('Próximamente', style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
