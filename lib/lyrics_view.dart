@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'chordpro.dart';
 
-/// Shows a song's ChordPro body: lyrics with their chords in colour, comments
+/// Shows a song's ChordPro body: lyrics with their chords above them, comments
 /// and section names set apart. Other directives are not shown.
 class LyricsView extends StatefulWidget {
   const LyricsView({super.key, required this.text});
@@ -39,26 +39,120 @@ class _LyricsViewState extends State<LyricsView> {
     'sob': 'Puente',
   };
   static const _comments = {'comment', 'c', 'comment_italic', 'ci', 'cb'};
-  static final _chord = RegExp(r'\[([^\]]*)\]');
+  // Inside a line of lyrics: a [chord], or a comment written after the words
+  // (ChordPro wants directives on their own line, people do not).
+  static final _inline = RegExp(
+    r'\[([^\]]*)\]|\{\s*(?:comment|comment_italic|c|ci|cb)\s*:\s*([^}]*?)\s*\}',
+    caseSensitive: false,
+  );
+
+  static final _word = RegExp(r'\S*\s*');
+
+  /// One line of lyrics, each chord above the syllable it is written before.
+  /// The line wraps between words; a word split by a chord stays together.
+  Widget _lyricLine(
+    String line,
+    TextStyle plain,
+    TextStyle chord,
+    TextStyle comment,
+  ) {
+    final matches = _inline.allMatches(line).toList();
+    // No chords: a single text wraps better than pieces.
+    if (matches.every((m) => m.group(2) != null)) {
+      var at = 0;
+      final spans = <TextSpan>[];
+      for (final m in matches) {
+        spans.add(TextSpan(text: line.substring(at, m.start)));
+        spans.add(TextSpan(text: ' ${m.group(2)} ', style: comment));
+        at = m.end;
+      }
+      spans.add(TextSpan(text: line.substring(at)));
+      return Text.rich(TextSpan(children: spans), style: plain);
+    }
+
+    final words = <Widget>[]; // what the line may wrap between
+    var word = <Widget>[];
+    void endWord() {
+      if (word.isEmpty) return;
+      words.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: word,
+        ),
+      );
+      word = [];
+    }
+
+    // A piece of lyrics with the chord that sounds on it, if any. Spaces are
+    // non-breaking so the ones at a piece's edge keep their width.
+    void piece(String? chordName, String text, [TextStyle? style]) {
+      final lyric = Text(text.replaceAll(' ', '\u00A0'), style: style ?? plain);
+      word.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The gap keeps a chord off the next one over a short syllable.
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Text(chordName ?? '', style: chord),
+            ),
+            lyric,
+          ],
+        ),
+      );
+      if (text.isEmpty || text.endsWith(' ')) endWord();
+    }
+
+    String? pending; // a chord waiting for the lyrics it goes over
+    void lyrics(String text) {
+      for (final m in _word.allMatches(text)) {
+        final part = m.group(0)!;
+        if (part.isEmpty) continue;
+        piece(pending, part);
+        pending = null;
+      }
+    }
+
+    var at = 0;
+    for (final m in matches) {
+      lyrics(line.substring(at, m.start));
+      at = m.end;
+      // A chord with no lyrics under it (two in a row, or at the end).
+      if (pending != null) piece(pending, '');
+      pending = null;
+      if (m.group(2) case final note?) {
+        endWord();
+        piece(null, ' $note ', comment);
+        endWord();
+      } else {
+        pending = m.group(1);
+      }
+    }
+    lyrics(line.substring(at));
+    if (pending != null) piece(pending, '');
+    endWord();
+    return Wrap(crossAxisAlignment: WrapCrossAlignment.end, children: words);
+  }
 
   List<Widget> _build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final plain = theme.textTheme.bodyLarge!;
-    final chord = TextStyle(color: scheme.primary, fontWeight: FontWeight.bold);
+    final chord = plain.copyWith(
+      color: scheme.primary,
+      fontWeight: FontWeight.bold,
+    );
+    final comment = plain.copyWith(
+      color: scheme.onTertiaryContainer,
+      backgroundColor: scheme.tertiaryContainer,
+    );
     final out = <Widget>[];
     for (final line in widget.text.split('\n')) {
       final d = directive.firstMatch(line);
       if (d == null) {
-        var at = 0;
-        final spans = <TextSpan>[];
-        for (final m in _chord.allMatches(line)) {
-          spans.add(TextSpan(text: line.substring(at, m.start)));
-          spans.add(TextSpan(text: '${m.group(1)} ', style: chord));
-          at = m.end;
-        }
-        spans.add(TextSpan(text: line.substring(at)));
-        out.add(Text.rich(TextSpan(children: spans), style: plain));
+        out.add(_lyricLine(line, plain, chord, comment));
         continue;
       }
       final name = d.group(1)!.toLowerCase(), value = d.group(2) ?? '';

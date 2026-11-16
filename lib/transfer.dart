@@ -4,7 +4,6 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
@@ -19,15 +18,6 @@ void Function(String) _sayOn(BuildContext context) {
   return (text) => messenger.showSnackBar(SnackBar(content: Text(text)));
 }
 
-/// UTF-8, or Latin-1 for files from older Windows editors.
-String _decode(Uint8List bytes) {
-  try {
-    return utf8.decode(bytes);
-  } on FormatException {
-    return latin1.decode(bytes);
-  }
-}
-
 String _baseName(String file) => file.replaceFirst(RegExp(r'\.[^.]+$'), '');
 
 Future<void> importSongs(BuildContext context, AppState state) async {
@@ -40,7 +30,10 @@ Future<void> importSongs(BuildContext context, AppState state) async {
       final bytes = await file.readAsBytes();
       final songs = bytes.length > _maxBytes
           ? const <Never>[]
-          : parseChordPro(_decode(bytes), fallbackName: _baseName(file.name));
+          : parseChordPro(
+              decodeText(bytes),
+              fallbackName: _baseName(file.name),
+            );
       songs.isEmpty ? skipped++ : count += state.importSongs(songs);
     }
     if (files.isEmpty) return;
@@ -89,7 +82,7 @@ Future<void> importSetlist(BuildContext context, AppState state) async {
     Setlist? setlist;
     if (bytes.length <= _maxBytes) {
       try {
-        setlist = state.importSetlist(jsonDecode(_decode(bytes)));
+        setlist = state.importSetlist(jsonDecode(decodeText(bytes)));
       } on FormatException {
         // not JSON: reported below
       }

@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prronclick/chordpro.dart';
 import 'package:prronclick/library.dart';
@@ -58,6 +61,26 @@ void main() {
       parseChordPro('{t: A}\n{new_song}\n{new_song}\n{t: B}'),
       hasLength(2),
     );
+  });
+
+  test('files in UTF-16, UTF-8 and Latin-1 all decode', () {
+    const text = '{title: Canción}\nño';
+    Uint8List utf16(Endian e) {
+      final units = [0xFEFF, ...text.codeUnits];
+      final data = ByteData(units.length * 2);
+      for (final (i, u) in units.indexed) {
+        data.setUint16(i * 2, u, e);
+      }
+      return data.buffer.asUint8List();
+    }
+
+    expect(decodeText(utf16(Endian.little)), text);
+    expect(decodeText(utf16(Endian.big)), text);
+    expect(decodeText(utf8.encode(text)), text);
+    expect(decodeText(latin1.encode(text)), text);
+    expect(decodeText(Uint8List(0)), '');
+    final song = parseChordPro(decodeText(utf16(Endian.little))).single;
+    expect((song.name, song.lyrics), ('Canción', 'ño'));
   });
 
   test('importing a song again updates ours and keeps its id', () {

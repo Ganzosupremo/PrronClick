@@ -50,7 +50,7 @@ void main() {
     expect((saved!.note, saved!.lyrics), (null, null));
   });
 
-  testWidgets('lyrics: chords, comments and sections; no raw directives', (
+  testWidgets('lyrics: chords above, comments, sections; no raw directives', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -59,6 +59,8 @@ void main() {
           body: LyricsView(
             text:
                 '{comment: Entra la batería}\n{soc}\n[Am]Hola [E7]mundo\n'
+                'reason to {comment: Break}\n'
+                'p[E]raise\n'
                 '{eoc}\n{x_cosa: 1}',
           ),
         ),
@@ -66,10 +68,18 @@ void main() {
     );
     expect(find.text('Entra la batería'), findsOneWidget);
     expect(find.text('Coro'), findsOneWidget);
+    // Each chord sits right above the syllable it was written before.
+    Offset at(String text) => tester.getTopLeft(find.text(text));
+    expect(at('Am').dx, at('Hola\u00A0').dx);
+    expect(at('Am').dy, lessThan(at('Hola\u00A0').dy));
+    expect(at('E7').dx, at('mundo').dx);
+    expect(at('E').dx, at('raise').dx); // "p[E]raise": inside the word
+    expect(at('raise').dx, tester.getTopRight(find.text('p')).dx);
+    expect(at('p').dy, at('raise').dy);
     expect(
-      find.textContaining('Am Hola E7 mundo', findRichText: true),
+      find.textContaining('reason to  Break', findRichText: true),
       findsOneWidget,
     );
-    expect(find.textContaining('{'), findsNothing);
+    expect(find.textContaining('{', findRichText: true), findsNothing);
   });
 }

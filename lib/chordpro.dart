@@ -2,8 +2,29 @@
 // Songs as ChordPro text (https://www.chordpro.org), the format other
 // musicians' apps read and write.
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'song.dart';
+
+/// A text file's bytes as a string: UTF-16 if it starts with that byte-order
+/// mark (Windows editors' "Unicode"), else UTF-8, else Latin-1 (older ones).
+String decodeText(Uint8List bytes) {
+  if (bytes.length >= 2) {
+    final little = bytes[0] == 0xFF && bytes[1] == 0xFE;
+    if (little || (bytes[0] == 0xFE && bytes[1] == 0xFF)) {
+      final data = ByteData.sublistView(bytes);
+      final endian = little ? Endian.little : Endian.big;
+      return String.fromCharCodes([
+        for (var i = 2; i + 1 < bytes.length; i += 2) data.getUint16(i, endian),
+      ]);
+    }
+  }
+  try {
+    return utf8.decode(bytes);
+  } on FormatException {
+    return latin1.decode(bytes);
+  }
+}
 
 /// A line that is only a directive: {name} or {name: value}.
 final directive = RegExp(r'^\s*\{\s*([A-Za-z_]+)\s*(?::\s*(.*?))?\s*\}\s*$');
