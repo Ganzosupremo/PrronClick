@@ -37,6 +37,7 @@ class SetlistsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         tooltip: 'Nuevo setlist',
         onPressed: () => _create(context),
         child: const Icon(Icons.add),
@@ -93,35 +94,57 @@ Future<String?> askName(
   BuildContext context, {
   required String title,
   String initial = '',
-}) {
-  final controller = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (context) {
-      void submit() {
-        final name = controller.text.trim();
-        if (name.isNotEmpty) Navigator.pop(context, name);
-      }
+}) => showDialog<String>(
+  context: context,
+  builder: (_) => _NameDialog(title: title, initial: initial),
+);
 
-      return AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Nombre'),
-          onSubmitted: (_) => submit(),
+// Owns its controller: the TextField still uses it while the dialog animates
+// out, after showDialog's future has completed.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.title, required this.initial});
+
+  final String title;
+  final String initial;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  void submit() {
+    final name = controller.text.trim();
+    if (name.isNotEmpty) Navigator.pop(context, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(labelText: 'Nombre'),
+        onSubmitted: (_) => submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(onPressed: submit, child: const Text('Guardar')),
-        ],
-      );
-    },
-  ).whenComplete(controller.dispose);
+        TextButton(onPressed: submit, child: const Text('Guardar')),
+      ],
+    );
+  }
 }
 
 /// One setlist: its songs in order, auto-advance, and starting it.
@@ -232,6 +255,7 @@ class SetlistPage extends StatelessWidget {
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
+            heroTag: null,
             onPressed: songs.isEmpty ? null : () => _start(context, 0),
             icon: const Icon(Icons.play_arrow),
             label: const Text('Empezar'),

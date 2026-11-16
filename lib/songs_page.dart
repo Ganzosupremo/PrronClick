@@ -76,6 +76,7 @@ class _SongsPageState extends State<SongsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         tooltip: 'Nueva canción',
         onPressed: () => _edit(context),
         child: const Icon(Icons.add),

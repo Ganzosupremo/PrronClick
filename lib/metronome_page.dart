@@ -171,6 +171,8 @@ class _MetronomePageState extends State<MetronomePage>
         const SizedBox(height: 16),
         Center(
           child: FloatingActionButton.large(
+            heroTag:
+                null, // every tab has a FAB in the same route: no shared tag
             tooltip: playing ? 'Parar' : 'Empezar',
             onPressed: canControl
                 ? () => state.engine.setPlaying(!playing)
