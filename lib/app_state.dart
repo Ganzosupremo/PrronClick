@@ -24,11 +24,21 @@ class AppState extends ChangeNotifier {
     // setlist's end), so poll it instead of hooking each one.
     if (Platform.isAndroid) {
       Timer.periodic(const Duration(milliseconds: 500), (_) => _keepAlive());
+      _background.setMethodCallHandler((call) async {
+        if (call.method == 'stop') await stopFromNotification();
+      });
     }
   }
 
   static const _background = MethodChannel('prronclick/background');
   bool _alive = false;
+
+  /// The notification's Parar. A follower cannot stop the band (Link would
+  /// stop everyone), so it leaves the session first and stops alone.
+  Future<void> stopFromNotification() async {
+    if (shareMode == ShareMode.follower) await setShareMode(ShareMode.solo);
+    engine.setPlaying(false);
+  }
 
   /// Android: a foreground service keeps the click going with the screen off
   /// while it plays, or while shared (a follower must hear the leader start).

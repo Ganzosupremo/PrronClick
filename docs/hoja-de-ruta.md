@@ -79,7 +79,14 @@
   cada 500 ms porque el play cambia desde muchos sitios.
 - Android 12+ solo deja arrancarlo con la app delante; si se niega, se
   reintenta. Se cierra al quitar la app de recientes.
-- Comprobado en el Samsung: con la pantalla apagada el click siguió sonando.
+- La notificación tiene un botón **Parar** (también en la pantalla de
+  bloqueo). Como líder o en Solo para el click igual que el botón de la app;
+  como seguidor primero vuelve a Solo, para no parar a toda la banda.
+- Android 13+ pide permiso de notificaciones la primera vez que suena; sin él
+  el click sigue sonando con la pantalla apagada, pero no se ve la
+  notificación.
+- Comprobado en el Samsung: con la pantalla apagada el click siguió sonando, y Parar desde la
+  notificación lo detuvo y cerró el servicio.
 
 ## Comprobado con dispositivos reales
 

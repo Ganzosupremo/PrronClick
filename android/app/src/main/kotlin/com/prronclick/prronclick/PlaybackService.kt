@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
@@ -24,6 +25,7 @@ class PlaybackService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        running = true
         val notification = notification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -44,9 +46,18 @@ class PlaybackService : Service() {
             .apply { setReferenceCounted(false); acquire() }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_NOT_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == STOP) {
+            onStop?.invoke()
+        } else {
+            // Shows it again in case notifications were allowed after it was posted.
+            getSystemService(NotificationManager::class.java).notify(ID, notification())
+        }
+        return START_NOT_STICKY
+    }
 
     override fun onDestroy() {
+        running = false
         wakeLock?.release()
         wifiLock?.release()
         super.onDestroy()
@@ -67,11 +78,20 @@ class PlaybackService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }
+        val stop = PendingIntent.getService(
+            this, 1, Intent(this, PlaybackService::class.java).setAction(STOP),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val stopAction = Notification.Action.Builder(
+            Icon.createWithResource(this, android.R.drawable.ic_media_pause), "Parar", stop
+        ).build()
         return builder
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle("PrronClick")
             .setContentText("El metrónomo sigue activo")
             .setContentIntent(open)
+            .addAction(stopAction)
+            .setVisibility(Notification.VISIBILITY_PUBLIC) // usable from the lock screen
             .setOngoing(true)
             .build()
     }
@@ -79,6 +99,12 @@ class PlaybackService : Service() {
     companion object {
         private const val ID = 1
         private const val CHANNEL = "playback"
+        private const val STOP = "stop"
+
+        // The notification's Parar button; the activity forwards it to Dart.
+        var onStop: (() -> Unit)? = null
+        var running = false
+            private set
 
         // Only works while the app is in the foreground (Android 12+); the app asks
         // for it when the user presses play or joins a session, so that is fine.
