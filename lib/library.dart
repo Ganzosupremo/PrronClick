@@ -7,6 +7,10 @@ class Library {
   Library({
     this.practiceTools = false,
     this.extraLatencyMs = 0,
+    this.displaceBars = 0,
+    this.gapTrainer = false,
+    this.gapPlay = 4,
+    this.gapMute = 2,
     List<Object?>? songs,
     List<Object?>? setlists,
   }) : songs = songs ?? [],
@@ -14,9 +18,17 @@ class Library {
 
   factory Library.fromJson(Map<String, Object?> json) {
     final settings = (json['settings'] as Map?) ?? const {};
+    // Out-of-range bar counts (hand-edited file) fall back to the defaults.
+    int bars(Object? v, int fallback) =>
+        v is int && v >= 1 && v <= 8 ? v : fallback;
+    final displace = settings['displaceBars'];
     return Library(
       practiceTools: settings['practiceTools'] == true,
       extraLatencyMs: (settings['extraLatencyMs'] as num?)?.toDouble() ?? 0,
+      displaceBars: displace == 2 || displace == 3 ? displace as int : 0,
+      gapTrainer: settings['gapTrainer'] == true,
+      gapPlay: bars(settings['gapPlay'], 4),
+      gapMute: bars(settings['gapMute'], 2),
       songs: (json['songs'] as List?)?.toList(),
       setlists: (json['setlists'] as List?)?.toList(),
     );
@@ -24,6 +36,10 @@ class Library {
 
   bool practiceTools;
   double extraLatencyMs;
+  int displaceBars; // 0, 2 or 3
+  bool gapTrainer;
+  int gapPlay;
+  int gapMute;
   // Kept as raw JSON until phases 3 and 4 give them a model.
   final List<Object?> songs;
   final List<Object?> setlists;
@@ -33,6 +49,10 @@ class Library {
     'settings': {
       'practiceTools': practiceTools,
       'extraLatencyMs': extraLatencyMs,
+      'displaceBars': displaceBars,
+      'gapTrainer': gapTrainer,
+      'gapPlay': gapPlay,
+      'gapMute': gapMute,
     },
     'songs': songs,
     'setlists': setlists,

@@ -15,6 +15,7 @@ enum ShareMode { solo, leader, follower }
 class AppState extends ChangeNotifier {
   AppState._(this.engine, this.store, this.library) : audioOk = engine.init() {
     engine.setExtraLatencyMs(library.extraLatencyMs);
+    _applyPractice();
   }
 
   static Future<AppState> load() async {
@@ -32,11 +33,10 @@ class AppState extends ChangeNotifier {
   ShareMode shareMode = ShareMode.solo;
   ShareChannel? _channel;
 
-  // Practice tools: per session, not saved.
-  int displaceBars = 0;
-  bool gapTrainer = false;
-  int gapPlay = 4;
-  int gapMute = 2;
+  int get displaceBars => library.displaceBars;
+  bool get gapTrainer => library.gapTrainer;
+  int get gapPlay => library.gapPlay;
+  int get gapMute => library.gapMute;
 
   bool get canControl => shareMode != ShareMode.follower;
 
@@ -64,29 +64,35 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  // Hidden tools must not change the click, but keep their settings.
+  void _applyPractice() {
+    final on = library.practiceTools;
+    engine.setDisplacement(on ? displaceBars : 0);
+    final gap = on && gapTrainer;
+    engine.setGapTrainer(gap ? gapPlay : 0, gap ? gapMute : 0);
+  }
+
   void setDisplacement(int bars) {
-    displaceBars = bars;
-    engine.setDisplacement(bars);
-    notifyListeners();
+    library.displaceBars = bars;
+    _practiceChanged();
   }
 
   void setGapTrainer({bool? enabled, int? play, int? mute}) {
-    gapTrainer = enabled ?? gapTrainer;
-    gapPlay = play ?? gapPlay;
-    gapMute = mute ?? gapMute;
-    engine.setGapTrainer(gapTrainer ? gapPlay : 0, gapTrainer ? gapMute : 0);
+    library.gapTrainer = enabled ?? gapTrainer;
+    library.gapPlay = play ?? gapPlay;
+    library.gapMute = mute ?? gapMute;
+    _practiceChanged();
+  }
+
+  void _practiceChanged() {
+    _applyPractice();
     notifyListeners();
+    store.save(library);
   }
 
   void setPracticeTools(bool enabled) {
     library.practiceTools = enabled;
-    // Hidden tools must not keep changing the click.
-    if (!enabled) {
-      setDisplacement(0);
-      setGapTrainer(enabled: false);
-    }
-    notifyListeners();
-    store.save(library);
+    _practiceChanged();
   }
 
   /// Applies live while dragging; call [saveLibrary] when the drag ends.
