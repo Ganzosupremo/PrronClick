@@ -392,6 +392,18 @@ class _SetlistBar extends StatelessWidget {
                 ),
               ),
             ),
+            if (state.canSaveLeaderSetlist)
+              IconButton(
+                tooltip: t.saveLeaderSetlist,
+                onPressed: () {
+                  final saved = state.saveLeaderSetlist();
+                  if (saved == null) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(t.setlistImported(saved.name))),
+                  );
+                },
+                icon: const Icon(Icons.save_alt),
+              ),
             // Only whoever runs the setlist moves through it.
             if (state.canControl) ...[
               IconButton(

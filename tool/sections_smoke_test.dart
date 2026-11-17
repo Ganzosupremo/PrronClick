@@ -3,6 +3,7 @@
 // with sections inside a setlist, then the tempo ramp:
 //   flutter test tool/sections_smoke_test.dart
 // Needs the Windows debug build's engine DLL; skipped without it.
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -13,6 +14,7 @@ import 'package:prronclick/app_state.dart';
 import 'package:prronclick/engine.dart';
 import 'package:prronclick/library.dart';
 import 'package:prronclick/setlist.dart';
+import 'package:prronclick/share.dart';
 import 'package:prronclick/song.dart';
 
 const dll = 'build/windows/x64/runner/Debug/prronclick_engine.dll';
@@ -133,5 +135,54 @@ void main() {
 
     // The library is saved in the background: let it finish before cleanup.
     await Future<void>.delayed(const Duration(milliseconds: 300));
+  }, skip: File(dll).existsSync() ? false : 'no engine at $dll');
+
+  test("a follower fetches the leader's setlist with its songs", () async {
+    final e = Engine(dll);
+    expect(e.init(), isTrue);
+    addTearDown(e.shutdown);
+    final song = Song(id: 'a', name: 'A', bpm: 100, beatsPerBar: 4)
+      ..lyrics = '[G]la letra';
+    final library = Library(
+      songs: [song],
+      setlists: [
+        Setlist(id: 's', name: 'S', songIds: ['a']),
+      ],
+    );
+    final port = sessionPort('smoke test') + 1;
+    final leader = await ShareChannel.leader(
+      e,
+      port: port,
+      songs: () => jsonEncode(library.exportSetlist(library.setlists.single)),
+    );
+    final got = <Object?>[];
+    final follower = await ShareChannel.follower(
+      e,
+      port: port,
+      onSongs: got.add,
+    );
+    addTearDown(() {
+      leader.close();
+      follower.close();
+    });
+    void announce() => follower.onMessage(
+      utf8.encode(
+        jsonEncode({
+          'v': 1,
+          'beat': 0,
+          'playing': false,
+          'bpb': 4,
+          'origin': 0,
+          'songs': 1,
+        }),
+      ),
+      from: InternetAddress.loopbackIPv4,
+    );
+
+    announce();
+    await until(() => got.isNotEmpty, 'the setlist fetched');
+    final copy = Library()..importSetlist(got.first);
+    expect(copy.setlists.single.name, 'S');
+    expect(copy.songs.single.lyrics, '[G]la letra');
   }, skip: File(dll).existsSync() ? false : 'no engine at $dll');
 }

@@ -187,5 +187,6 @@
   "voicesMissing": "Diese Version hat keine Stimmen.",
   "transpose": "Transponieren",
   "transposeDown": "Halbton tiefer",
-  "transposeUp": "Halbton höher"
+  "transposeUp": "Halbton höher",
+  "saveLeaderSetlist": "Diese Setlist in meiner Bibliothek speichern"
 }

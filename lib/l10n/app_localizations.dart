@@ -1167,6 +1167,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Medio tono arriba'**
   String get transposeUp;
+
+  /// No description provided for @saveLeaderSetlist.
+  ///
+  /// In es, this message translates to:
+  /// **'Guardar este setlist en mi biblioteca'**
+  String get saveLeaderSetlist;
 }
 
 class _AppLocalizationsDelegate

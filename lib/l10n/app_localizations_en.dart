@@ -663,4 +663,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transposeUp => 'Half step up';
+
+  @override
+  String get saveLeaderSetlist => 'Save this setlist to my library';
 }

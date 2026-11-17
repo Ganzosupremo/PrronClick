@@ -214,5 +214,6 @@
   "voicesMissing": "Esta versión no trae voces.",
   "transpose": "Transponer",
   "transposeDown": "Medio tono abajo",
-  "transposeUp": "Medio tono arriba"
+  "transposeUp": "Medio tono arriba",
+  "saveLeaderSetlist": "Guardar este setlist en mi biblioteca"
 }

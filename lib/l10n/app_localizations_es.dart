@@ -664,4 +664,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get transposeUp => 'Medio tono arriba';
+
+  @override
+  String get saveLeaderSetlist => 'Guardar este setlist en mi biblioteca';
 }

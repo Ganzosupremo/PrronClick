@@ -2,6 +2,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'engine.dart';
 import 'song.dart';
@@ -171,8 +174,20 @@ int sessionPort(String code) {
 /// Link keeps tempo and beat phase in sync, but each peer numbers beats
 /// differently (off by a whole number k). The leader broadcasts its beat and
 /// bar origin; each follower works out k and shifts the origin by it.
+///
+/// The leader also hands out its setlist with the songs' lyrics, too big for
+/// a datagram: each message names its version, and a follower that has not
+/// got that one fetches it over TCP from the same port.
 class ShareChannel {
-  ShareChannel._(this.engine, this.socket, this.port, {this.info, this.onInfo});
+  ShareChannel._(
+    this.engine,
+    this.socket,
+    this.port, {
+    this.info,
+    this.onInfo,
+    this.songs,
+    this.onSongs,
+  });
 
   /// UDP port of the broadcast: the one above Link's (see [sessionPort]).
   final int port;
@@ -191,6 +206,19 @@ class ShareChannel {
   /// Follower: called with what the leader says about the song and setlist.
   final void Function(ShowInfo)? onInfo;
 
+  /// Leader: the setlist and songs to hand out, as JSON.
+  final String Function()? songs;
+  ServerSocket? _server;
+  String? _payload;
+  final _payloadAge = Stopwatch();
+
+  /// Follower: called with the leader's setlist and songs (still unchecked).
+  final void Function(Object? json)? onSongs;
+  int? _songsVersion;
+  bool _fetching = false;
+  Stopwatch? _sinceFetch;
+  static const _maxSongBytes = 4 << 20;
+
   // Follower: recent k values (median rejects a packet delayed past a beat).
   final _ks = <int>[];
   bool? _leaderPlaying;
@@ -199,10 +227,36 @@ class ShareChannel {
     Engine engine, {
     required int port,
     ShowInfo Function()? info,
+    String Function()? songs,
   }) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0)
       ..broadcastEnabled = true;
-    final channel = ShareChannel._(engine, socket, port, info: info);
+    final channel = ShareChannel._(
+      engine,
+      socket,
+      port,
+      info: info,
+      songs: songs,
+    );
+    if (songs != null) {
+      try {
+        channel._server = await ServerSocket.bind(
+          InternetAddress.anyIPv4,
+          port,
+        );
+        channel._server!.listen((client) async {
+          try {
+            client.add(utf8.encode(channel._songsPayload()));
+            await client.close();
+          } on SocketException {
+            client.destroy();
+          }
+        });
+      } on SocketException catch (e) {
+        // The click is still shared; only the lyrics are not.
+        debugPrint('setlist sharing unavailable: $e');
+      }
+    }
     final sinceSent = Stopwatch()..start();
     String? lastState;
     channel._timer = Timer.periodic(_poll, (_) {
@@ -224,17 +278,26 @@ class ShareChannel {
     Engine engine, {
     required int port,
     void Function(ShowInfo)? onInfo,
+    void Function(Object? json)? onSongs,
   }) async {
     final socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       port,
       reuseAddress: true,
     );
-    final channel = ShareChannel._(engine, socket, port, onInfo: onInfo);
+    final channel = ShareChannel._(
+      engine,
+      socket,
+      port,
+      onInfo: onInfo,
+      onSongs: onSongs,
+    );
     socket.listen((event) {
       if (event != RawSocketEvent.read) return;
       final datagram = socket.receive();
-      if (datagram != null) channel.onMessage(datagram.data);
+      if (datagram != null) {
+        channel.onMessage(datagram.data, from: datagram.address);
+      }
     });
     return channel;
   }
@@ -242,6 +305,51 @@ class ShareChannel {
   void close() {
     _timer?.cancel();
     socket.close();
+    _server?.close();
+  }
+
+  // Built at most once a second: messages go out up to every 20 ms.
+  String _songsPayload() {
+    if (_payload == null || _payloadAge.elapsed > const Duration(seconds: 1)) {
+      _payload = songs!();
+      _payloadAge
+        ..reset()
+        ..start();
+    }
+    return _payload!;
+  }
+
+  /// Follower: gets version [version] of the setlist from the leader at
+  /// [from], unless we have it, are getting it, or just failed to.
+  Future<void> _fetchSongs(int version, InternetAddress from) async {
+    if (version == _songsVersion || _fetching) return;
+    if (_sinceFetch case final s? when s.elapsed < const Duration(seconds: 2)) {
+      return;
+    }
+    _fetching = true;
+    _sinceFetch = Stopwatch()..start();
+    try {
+      final client = await Socket.connect(
+        from,
+        port,
+        timeout: const Duration(seconds: 2),
+      );
+      final bytes = BytesBuilder(copy: false);
+      await for (final chunk in client.timeout(const Duration(seconds: 5))) {
+        bytes.add(chunk);
+        if (bytes.length > _maxSongBytes) {
+          client.destroy();
+          throw const FormatException('setlist too big');
+        }
+      }
+      final json = jsonDecode(utf8.decode(bytes.takeBytes()));
+      _songsVersion = version;
+      onSongs?.call(json);
+    } on Exception catch (e) {
+      debugPrint('could not get the leader\'s setlist: $e');
+    } finally {
+      _fetching = false;
+    }
   }
 
   void _send() {
@@ -262,6 +370,7 @@ class ShareChannel {
           'count': engine.pendingCountBeats(),
         },
       ...?info?.call().toJson(),
+      if (songs != null && _server != null) 'songs': _songsPayload().hashCode,
     };
     // shortcut: limited broadcast goes out one interface only; send per
     // interface (subnet broadcast) if a multi-homed leader is not heard.
@@ -272,9 +381,9 @@ class ShareChannel {
     );
   }
 
-  /// Applies one leader message. Anything malformed is ignored: it comes from
-  /// whoever is on the network.
-  void onMessage(List<int> bytes) {
+  /// Applies one leader message, sent from [from]. Anything malformed is
+  /// ignored: it comes from whoever is on the network.
+  void onMessage(List<int> bytes, {InternetAddress? from}) {
     final Object? m;
     try {
       m = jsonDecode(utf8.decode(bytes));
@@ -286,6 +395,9 @@ class ShareChannel {
     final bpb = m['bpb'], origin = m['origin'];
     if (beat is! num || playing is! bool || bpb is! int || origin is! num) {
       return;
+    }
+    if (m['songs'] case final int version when from != null) {
+      _fetchSongs(version, from);
     }
     final mute = m['mute'] is num ? m['mute'] as num : origin;
     // A leader without count-in (older app) sends none: origin means no count.

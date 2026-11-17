@@ -665,4 +665,8 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get transposeUp => 'Halbton höher';
+
+  @override
+  String get saveLeaderSetlist =>
+      'Diese Setlist in meiner Bibliothek speichern';
 }

@@ -187,5 +187,6 @@
   "voicesMissing": "This version has no voices.",
   "transpose": "Transpose",
   "transposeDown": "Half step down",
-  "transposeUp": "Half step up"
+  "transposeUp": "Half step up",
+  "saveLeaderSetlist": "Save this setlist to my library"
 }

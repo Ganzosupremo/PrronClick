@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -134,18 +135,55 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// The song whose lyrics to show: ours, or as a follower our own copy of
-  /// the leader's song, found by name (lyrics are too big to broadcast).
+  /// The song whose lyrics to show: ours, or as a follower the leader's,
+  /// found by name among the songs it sent, else in our own library.
   Song? get shownSong =>
       shareMode == ShareMode.follower ? _followedSong : currentSong;
   Song? _followedSong;
 
   void _findFollowedSong() {
     final name = leaderInfo.song;
+    Song? named(List<Song> songs) =>
+        songs.where((s) => fold(s.name) == fold(name!)).firstOrNull;
     _followedSong = name == null
         ? null
-        : library.songs.where((s) => fold(s.name) == fold(name)).firstOrNull;
+        : named(_leaderSongs) ?? named(library.songs);
   }
+
+  /// Follower: what the leader sent ([Library.exportSetlist]'s format when a
+  /// setlist runs there), and its songs.
+  Object? _leaderShared;
+  List<Song> _leaderSongs = const [];
+
+  void _leaderSent(Object? json) {
+    final list = json is Map ? json['songs'] : null;
+    _leaderShared = json;
+    _leaderSongs = [
+      for (final s in list is List ? list : const []) ?Song.fromJson(s),
+    ];
+    _findFollowedSong();
+    notifyListeners();
+  }
+
+  /// Follower: whether the leader's running setlist can be kept.
+  bool get canSaveLeaderSetlist =>
+      shareMode == ShareMode.follower &&
+      leaderInfo.setlist != null &&
+      _leaderShared is Map &&
+      (_leaderShared as Map)['prronclick'] == 'setlist';
+
+  /// Follower: adds the leader's setlist and its songs to our library (or
+  /// updates them, if we kept it before). Null if there is none.
+  Setlist? saveLeaderSetlist() =>
+      canSaveLeaderSetlist ? importSetlist(_leaderShared) : null;
+
+  /// Leader: the running setlist with its songs, else the song loaded.
+  String _sharedSongs() => jsonEncode(switch (activeSetlist) {
+    final setlist? => library.exportSetlist(setlist),
+    null => {
+      'songs': [?currentSong?.toJson()],
+    },
+  });
 
   /// Follower: what the leader announces.
   ShowInfo leaderInfo = const ShowInfo();
@@ -478,6 +516,8 @@ class AppState extends ChangeNotifier {
     shareMode = mode;
     leaderInfo = const ShowInfo();
     _followedSong = null;
+    _leaderShared = null;
+    _leaderSongs = const [];
     engine.setBeatUnit(beatUnit); // back to ours after following a leader
     _sendAccents(_accents);
     if (mode == ShareMode.follower && activeSetlist != null) stopSetlist();
@@ -491,6 +531,7 @@ class AppState extends ChangeNotifier {
           engine,
           port: sessionPort(library.sessionCode) + 1,
           info: () => showInfo,
+          songs: _sharedSongs,
         ),
         ShareMode.follower => await ShareChannel.follower(
           engine,
@@ -505,6 +546,7 @@ class AppState extends ChangeNotifier {
             _findFollowedSong();
             notifyListeners();
           },
+          onSongs: _leaderSent,
         ),
       };
       // The user may have switched again while the socket was opening.
