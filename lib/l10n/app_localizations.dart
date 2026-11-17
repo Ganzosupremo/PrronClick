@@ -1149,6 +1149,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Esta versión no trae voces.'**
   String get voicesMissing;
+
+  /// No description provided for @transpose.
+  ///
+  /// In es, this message translates to:
+  /// **'Transponer'**
+  String get transpose;
+
+  /// No description provided for @transposeDown.
+  ///
+  /// In es, this message translates to:
+  /// **'Medio tono abajo'**
+  String get transposeDown;
+
+  /// No description provided for @transposeUp.
+  ///
+  /// In es, this message translates to:
+  /// **'Medio tono arriba'**
+  String get transposeUp;
 }
 
 class _AppLocalizationsDelegate

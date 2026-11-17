@@ -67,6 +67,17 @@ const _sectionWords = [
   return null;
 }
 
+/// Whether a section called [name] ends the song: an ending word anywhere
+/// in it ("Outro", "Coda", "Coro final").
+bool endsSong(String name) {
+  final words = fold(name).replaceAll(RegExp(r'[^a-z0-9]+'), ' ').split(' ');
+  return _sectionWords.any(
+    (entry) =>
+        (entry.$1 == 'outro' || entry.$1 == 'ending') &&
+        entry.$2.any(words.contains),
+  );
+}
+
 /// Loads [language]'s cues into the engine; returns how many it found.
 /// Slots without a file are cleared, so no other language's voice remains.
 Future<int> loadCues(Engine engine, String language) async {

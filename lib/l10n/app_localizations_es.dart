@@ -655,4 +655,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get voicesMissing => 'Esta versión no trae voces.';
+
+  @override
+  String get transpose => 'Transponer';
+
+  @override
+  String get transposeDown => 'Medio tono abajo';
+
+  @override
+  String get transposeUp => 'Medio tono arriba';
 }

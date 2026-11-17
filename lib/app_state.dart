@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'chordpro.dart';
 import 'cues.dart';
 import 'engine.dart';
 import 'library.dart';
@@ -159,10 +160,13 @@ class AppState extends ChangeNotifier {
     final songs = setlistSongs, i = setlistIndex;
     return ShowInfo(
       song: song?.name,
-      key: song?.key,
+      key: song?.key == null
+          ? null
+          : transposeChord(song!.key!, song.transpose),
       note: song?.note,
       beatUnit: beatUnit,
       accents: _accents,
+      transpose: song?.transpose ?? 0,
       section: sections.elementAtOrNull(sectionIndex)?.name,
       nextSection: next == null ? null : sections.elementAtOrNull(next)?.name,
       sectionChange: next == null ? null : _changeBeat,
@@ -170,8 +174,8 @@ class AppState extends ChangeNotifier {
       position: setlist == null ? 0 : i + 1,
       total: setlist == null ? 0 : songs.length,
       next: i + 1 < songs.length ? songs[i + 1].name : null,
-      // A section change is not the next song.
-      changeBeat: next == null ? _changeBeat : null,
+      // A section change is not the next song, nor is the song's end.
+      changeBeat: next == null && !_changeStops ? _changeBeat : null,
     );
   }
 
@@ -287,11 +291,13 @@ class AppState extends ChangeNotifier {
   int _changeIndex = 0; // the song it brings...
   int? _changeSection; // ...or, if set, the section of the current song
   double? _resumeEnd; // end to keep after a manual meter change
+  bool _changeStops = false; // ...or the song's end: the click stops there
 
   void _forgetChange() {
     _changeBeat = null;
     _changeSection = null;
     _resumeEnd = null;
+    _changeStops = false;
   }
 
   List<Song> get setlistSongs =>
@@ -374,6 +380,9 @@ class AppState extends ChangeNotifier {
         _changeSection = null;
         sectionIndex = section;
         beatUnit = song.unitAt(section);
+      } else if (_changeStops) {
+        // The engine stops on this beat; stopping loads the song's start.
+        _changeStops = false;
       } else {
         final songs = setlistSongs;
         setlistIndex = _changeIndex;
@@ -394,7 +403,13 @@ class AppState extends ChangeNotifier {
         setlist != null &&
         setlist.autoAdvance &&
         setlistIndex < setlistSongs.length;
-    if (lastSection && !advance) return; // nothing follows: keep playing
+    // An Outro (or Final, Coda...) last ends the song: the click stops.
+    final stops =
+        lastSection &&
+        !advance &&
+        sections.isNotEmpty &&
+        endsSong(sections.last.name);
+    if (lastSection && !advance && !stops) return; // keep playing
     final bars = sections.isEmpty
         ? songBars(song)
         : sections[min(sectionIndex, sections.length - 1)].bars;
@@ -408,7 +423,12 @@ class AppState extends ChangeNotifier {
     // Already past the end (auto-advance turned on late): change soon instead
     // of pivoting the tempo in the past.
     if (end <= beat + 0.5) end = _nextDownbeat();
-    if (lastSection) {
+    if (stops) {
+      engine.scheduleSong(end, 0, bpb, 0);
+      _changeBeat = end;
+      _changeSection = null;
+      _changeStops = true;
+    } else if (lastSection) {
       _schedule(setlistIndex + 1, end, pauseBars: setlist!.pauseBars);
     } else {
       final next = sectionIndex + 1;
@@ -584,6 +604,15 @@ class AppState extends ChangeNotifier {
   void setFlash({bool? beats, bool? countIn}) {
     library.flash = beats ?? library.flash;
     library.flashCountIn = countIn ?? library.flashCountIn;
+    notifyListeners();
+    store.save(library);
+  }
+
+  /// Shows the loaded song's chords and key [steps] semitones moved.
+  void setTranspose(int steps) {
+    final song = currentSong;
+    if (song == null) return;
+    song.transpose = steps.clamp(-11, 11);
     notifyListeners();
     store.save(library);
   }

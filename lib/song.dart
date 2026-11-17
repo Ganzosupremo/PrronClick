@@ -12,12 +12,8 @@ int accentGroup(int beats, int unit) =>
 const accentStrong = 0, accentMedium = 1, accentNormal = 2, accentSilent = 3;
 
 /// The level a tap moves a beat to: normal, strong, medium, silent, normal.
-int nextAccent(int level) => const [
-  accentMedium,
-  accentSilent,
-  accentStrong,
-  accentNormal,
-][level];
+int nextAccent(int level) =>
+    const [accentMedium, accentSilent, accentStrong, accentNormal][level];
 
 /// The bar's pattern when the song sets none.
 List<int> defaultAccents(int beats, int unit) {
@@ -107,6 +103,7 @@ class Song {
     this.note,
     this.lyrics,
     this.accents,
+    this.transpose = 0,
     List<Section>? sections,
   }) : sections = sections ?? [];
 
@@ -134,6 +131,10 @@ class Song {
         final a? when a.length == bpb.clamp(1, 16) => a,
         _ => null,
       },
+      transpose: switch (json['transpose']) {
+        final int n when n.abs() <= 11 => n,
+        _ => 0,
+      },
       sections: [
         if (json['sections'] case final List list)
           for (final s in list) ?Section.fromJson(s),
@@ -157,6 +158,9 @@ class Song {
   /// The bar's own accents, one level per beat; null = the automatic ones.
   /// Only bars of [beatsPerBar] beats use them.
   List<int>? accents;
+
+  /// Semitones the chords and key are shown up (or down); -11..11.
+  int transpose;
 
   /// Played in order, each for its bars; empty = one stretch, the whole song.
   List<Section> sections;
@@ -193,6 +197,7 @@ class Song {
     note = other.note;
     lyrics = other.lyrics;
     accents = other.accents == null ? null : [...other.accents!];
+    transpose = other.transpose;
     sections = [for (final s in other.sections) Section.fromJson(s.toJson())!];
   }
 
@@ -207,6 +212,7 @@ class Song {
     'note': ?note,
     'lyrics': ?lyrics,
     'accents': ?accents,
+    if (transpose != 0) 'transpose': transpose,
     if (sections.isNotEmpty) 'sections': [for (final s in sections) s.toJson()],
   };
 

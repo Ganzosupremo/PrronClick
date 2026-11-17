@@ -184,5 +184,8 @@
   "voiceCountHelp": "Eine Stimme zählt ein: „eins, zwei, drei, vier“.",
   "voiceSections": "Gesprochene Teile",
   "voiceSectionsHelp": "Einen Takt vorher sagt eine Stimme den nächsten Teil an: „Refrain“, „Strophe zwei“.",
-  "voicesMissing": "Diese Version hat keine Stimmen."
+  "voicesMissing": "Diese Version hat keine Stimmen.",
+  "transpose": "Transponieren",
+  "transposeDown": "Halbton tiefer",
+  "transposeUp": "Halbton höher"
 }

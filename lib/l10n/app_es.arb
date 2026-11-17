@@ -211,5 +211,8 @@
   "voiceCountHelp": "Una voz dice los números de la cuenta: «uno, dos, tres, cuatro».",
   "voiceSections": "Voz en las secciones",
   "voiceSectionsHelp": "Un compás antes, una voz dice la sección que viene: «Coro», «Verso dos».",
-  "voicesMissing": "Esta versión no trae voces."
+  "voicesMissing": "Esta versión no trae voces.",
+  "transpose": "Transponer",
+  "transposeDown": "Medio tono abajo",
+  "transposeUp": "Medio tono arriba"
 }

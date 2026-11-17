@@ -32,4 +32,20 @@ void main() {
     expect(sectionCue('Corona'), isNull); // a word, not "coro"
     expect(sectionCue(''), isNull);
   });
+
+  test('an Outro, Final or Coda ends the song; a Tag or Verso does not', () {
+    for (final name in [
+      'Outro',
+      'Final',
+      'Coda',
+      'Ending',
+      'Schluss',
+      'Ende',
+    ]) {
+      expect(endsSong(name), isTrue, reason: name);
+    }
+    for (final name in ['Tag', 'Verso', 'Coro final?', 'Groove']) {
+      expect(endsSong(name), name == 'Coro final?', reason: name);
+    }
+  });
 }

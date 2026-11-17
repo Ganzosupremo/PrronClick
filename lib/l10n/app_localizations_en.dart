@@ -654,4 +654,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voicesMissing => 'This version has no voices.';
+
+  @override
+  String get transpose => 'Transpose';
+
+  @override
+  String get transposeDown => 'Half step down';
+
+  @override
+  String get transposeUp => 'Half step up';
 }

@@ -79,6 +79,8 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
         named = true;
       case 'key' when value.isNotEmpty:
         song.key = value;
+      case 'transpose' when int.tryParse(value) != null:
+        song.transpose = int.parse(value).clamp(-11, 11);
       case 'tempo' when double.tryParse(value) != null:
         song.bpm = double.parse(value).clamp(20, 300);
       case 'time':
@@ -159,6 +161,7 @@ String toChordPro(Iterable<Song> songs) => [
     [
       '{title: ${s.name}}',
       if (s.key != null) '{key: ${s.key}}',
+      if (s.transpose != 0) '{transpose: ${s.transpose}}',
       '{tempo: ${s.bpm.round()}}',
       '{time: ${s.meter}}',
       if (s.durationSeconds case final d?) '{duration: ${formatDuration(d)}}',
@@ -170,3 +173,100 @@ String toChordPro(Iterable<Song> songs) => [
       if (s.lyrics != null) '\n${s.lyrics}',
     ].join('\n'),
 ].join('\n\n{new_song}\n');
+
+// Chord roots, as letters or as Do-Re-Mi; spelled back with the original's
+// sharps or flats, else the ones musicians use most.
+const _letters = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11};
+const _syllables = {
+  'Do': 0,
+  'Re': 2,
+  'Mi': 4,
+  'Fa': 5,
+  'Sol': 7,
+  'La': 9,
+  'Si': 11,
+};
+const _sharpNames = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
+];
+const _flatNames = [
+  'C',
+  'Db',
+  'D',
+  'Eb',
+  'E',
+  'F',
+  'Gb',
+  'G',
+  'Ab',
+  'A',
+  'Bb',
+  'B',
+];
+const _usualNames = [
+  'C',
+  'C#',
+  'D',
+  'Eb',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'Ab',
+  'A',
+  'Bb',
+  'B',
+];
+final _note = RegExp(r'^(Do|Re|Mi|Fa|Sol|La|Si|[A-G])([#b♯♭]?)');
+// What may follow the root: "m7b5", "maj7", "sus4", "add9", "(#9)"...; so
+// "[Coda]" or "[Intro]" are left alone.
+final _suffix = RegExp(
+  r'^(?:maj|min|dim|aug|sus|add|alt|m|M|[0-9#b+\-°ø()^Δ,.])*$',
+);
+
+/// [chord] moved [steps] semitones ("Am7/G" +2 -> "Bm7/A"); anything that is
+/// not a chord comes back as it was.
+String transposeChord(String chord, int steps) {
+  if (steps % 12 == 0) return chord;
+  String? note(String text) {
+    final m = _note.firstMatch(text);
+    if (m == null || m.end != text.length) return null;
+    final root = m.group(1)!, accidental = m.group(2)!;
+    final sharp = accidental == '#' || accidental == '♯';
+    final flat = accidental == 'b' || accidental == '♭';
+    final pitch =
+        (_letters[root] ?? _syllables[root]!) +
+        (sharp ? 1 : 0) -
+        (flat ? 1 : 0);
+    final names = sharp
+        ? _sharpNames
+        : flat
+        ? _flatNames
+        : _usualNames;
+    final name = names[(pitch + steps) % 12];
+    if (_letters.containsKey(root)) return name;
+    final latin = _syllables.keys.elementAt('CDEFGAB'.indexOf(name[0]));
+    return latin + name.substring(1);
+  }
+
+  final m = RegExp(
+    r'^(Do|Re|Mi|Fa|Sol|La|Si|[A-G])([#b♯♭]?)(.*?)(?:/([^/]+))?$',
+  ).firstMatch(chord.trim());
+  if (m == null || !_suffix.hasMatch(m.group(3)!)) return chord;
+  final root = note('${m.group(1)}${m.group(2)}')!;
+  final bass = m.group(4);
+  if (bass == null) return '$root${m.group(3)}';
+  final movedBass = note(bass);
+  return movedBass == null ? chord : '$root${m.group(3)}/$movedBass';
+}

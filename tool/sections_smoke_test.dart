@@ -109,6 +109,28 @@ void main() {
     state.cycleAccent(1, 2); // silent
     state.cycleAccent(1, 2); // normal again: the automatic pattern
     expect((state.accents, state.currentSong!.accents), (null, null));
+    // A song alone whose last section is an Outro: the click stops at its end
+    // and the song is back at its start (2 bars at 240 + 1 bar at 300 = 1.4 s).
+    final c = Song(
+      id: 'c',
+      name: 'C',
+      bpm: 240,
+      beatsPerBar: 2,
+      sections: [
+        Section(name: 'Verso', bars: 2),
+        Section(name: 'Outro', bars: 1, bpm: 300),
+      ],
+    );
+    library.songs.add(c);
+    state.stopSetlist();
+    state.loadSong(c);
+    e.setPlaying(true);
+    await until(() => state.sectionIndex == 1, 'the Outro');
+    expect(state.showInfo.changeBeat, isNull); // no "next song" countdown
+    await until(() => !e.isPlaying(), 'stopped after the Outro');
+    await until(() => state.sectionIndex == 0, 'back to the start');
+    expect(e.tempo().round(), 240);
+
     // The library is saved in the background: let it finish before cleanup.
     await Future<void>.delayed(const Duration(milliseconds: 300));
   }, skip: File(dll).existsSync() ? false : 'no engine at $dll');

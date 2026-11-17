@@ -15,6 +15,7 @@ class ShowInfo {
     this.note,
     this.beatUnit = 4,
     this.accents,
+    this.transpose = 0,
     this.section,
     this.nextSection,
     this.sectionChange,
@@ -30,6 +31,8 @@ class ShowInfo {
   final String? note; // the song's one-line note for the band
   final int beatUnit; // the meter's lower number (notation only)
   final List<int>? accents; // the song's own; null = automatic
+  final int
+  transpose; // semitones the chords are shown moved ([key] already is)
   final String? section; // the song's section playing now
   final String? nextSection; // the one scheduled, once it is
   final double? sectionChange; // the beat where it starts
@@ -45,6 +48,7 @@ class ShowInfo {
     'note': ?note,
     if (beatUnit != 4) 'unit': beatUnit,
     'accents': ?accents,
+    if (transpose != 0) 'transpose': transpose,
     'section': ?section,
     if (nextSection != null)
       'nextSection': {'name': nextSection, 'at': sectionChange},
@@ -67,6 +71,10 @@ class ShowInfo {
     final song = text(m['song']), key = text(m['key']), note = text(m['note']);
     final unit = beatUnits.contains(m['unit']) ? m['unit'] as int : 4;
     final accents = parseAccents(m['accents']);
+    final transpose = switch (m['transpose']) {
+      final int n when n.abs() <= 11 => n,
+      _ => 0,
+    };
     final ns = m['nextSection'];
     final nextSection = ns is Map ? text(ns['name']) : null;
     final at = ns is Map ? ns['at'] : null;
@@ -80,6 +88,7 @@ class ShowInfo {
         note: note,
         beatUnit: unit,
         accents: accents,
+        transpose: transpose,
         section: text(m['section']),
         nextSection: nextSection,
         sectionChange: sectionChange,
@@ -92,6 +101,7 @@ class ShowInfo {
       note: note,
       beatUnit: unit,
       accents: accents,
+      transpose: transpose,
       section: text(m['section']),
       nextSection: nextSection,
       sectionChange: sectionChange,
@@ -111,6 +121,7 @@ class ShowInfo {
       other.note == note &&
       other.beatUnit == beatUnit &&
       sameAccents(other.accents, accents) &&
+      other.transpose == transpose &&
       other.section == section &&
       other.nextSection == nextSection &&
       other.sectionChange == sectionChange &&
@@ -127,6 +138,7 @@ class ShowInfo {
     note,
     beatUnit,
     accentBits(accents ?? const []),
+    transpose,
     section,
     nextSection,
     sectionChange,

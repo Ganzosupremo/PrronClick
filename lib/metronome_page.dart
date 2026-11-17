@@ -270,14 +270,55 @@ class _MetronomePageState extends State<MetronomePage>
         const SizedBox(height: 8),
         _ToolsPanel(state: state, bar: playing ? bar : 0),
         if (lyrics != null)
+          // Keyed: lines above come and go ("Next: ..."), and without a key
+          // the list would rebuild the card closed.
           Card.outlined(
+            key: const ValueKey('lyrics'),
             child: ExpansionTile(
+              key: const PageStorageKey('lyrics'),
               leading: const Icon(Icons.lyrics_outlined),
               title: Text(t.lyrics),
               shape: const Border(),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [LyricsView(text: lyrics)],
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(t.transpose)),
+                    IconButton(
+                      tooltip: t.transposeDown,
+                      onPressed: canControl && info.transpose > -11
+                          ? () => state.setTranspose(info.transpose - 1)
+                          : null,
+                      icon: const Icon(Icons.remove),
+                    ),
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        [
+                          info.transpose > 0
+                              ? '+${info.transpose}'
+                              : '${info.transpose}',
+                          ?info.key,
+                        ].join(' · '),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: t.transposeUp,
+                      onPressed: canControl && info.transpose < 11
+                          ? () => state.setTranspose(info.transpose + 1)
+                          : null,
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+                LyricsView(
+                  text: lyrics,
+                  transpose: info.transpose,
+                  section: playing ? info.section : null,
+                ),
+              ],
             ),
           ),
       ],

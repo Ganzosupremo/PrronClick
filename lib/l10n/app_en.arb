@@ -184,5 +184,8 @@
   "voiceCountHelp": "A voice counts the count-in: “one, two, three, four”.",
   "voiceSections": "Spoken sections",
   "voiceSectionsHelp": "A bar ahead, a voice names the next section: “Chorus”, “Verse two”.",
-  "voicesMissing": "This version has no voices."
+  "voicesMissing": "This version has no voices.",
+  "transpose": "Transpose",
+  "transposeDown": "Half step down",
+  "transposeUp": "Half step up"
 }

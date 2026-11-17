@@ -656,4 +656,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get voicesMissing => 'Diese Version hat keine Stimmen.';
+
+  @override
+  String get transpose => 'Transponieren';
+
+  @override
+  String get transposeDown => 'Halbton tiefer';
+
+  @override
+  String get transposeUp => 'Halbton höher';
 }

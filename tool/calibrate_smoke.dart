@@ -16,9 +16,11 @@ Future<void> main(List<String> args) async {
   for (var i = 0; i < 100 && !(e.numPeers() > 0 && e.isPlaying()); i++) {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
-  stdout.writeln('peers ${e.numPeers()} playing ${e.isPlaying()} '
-      'tempo ${e.tempo().toStringAsFixed(1)} '
-      'output latency ${e.outputLatencyMs().toStringAsFixed(1)} ms');
+  stdout.writeln(
+    'peers ${e.numPeers()} playing ${e.isPlaying()} '
+    'tempo ${e.tempo().toStringAsFixed(1)} '
+    'output latency ${e.outputLatencyMs().toStringAsFixed(1)} ms',
+  );
   await Future<void>.delayed(const Duration(seconds: 1));
   if (!e.calibrationStart()) throw StateError('mic failed');
   await Future<void>.delayed(const Duration(seconds: 8));
