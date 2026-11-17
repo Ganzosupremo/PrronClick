@@ -95,18 +95,24 @@ Future<String?> askName(
   BuildContext context, {
   required String title,
   String initial = '',
+  String label = 'Nombre',
 }) => showDialog<String>(
   context: context,
-  builder: (_) => _NameDialog(title: title, initial: initial),
+  builder: (_) => _NameDialog(title: title, initial: initial, label: label),
 );
 
 // Owns its controller: the TextField still uses it while the dialog animates
 // out, after showDialog's future has completed.
 class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.initial});
+  const _NameDialog({
+    required this.title,
+    required this.initial,
+    required this.label,
+  });
 
   final String title;
   final String initial;
+  final String label;
 
   @override
   State<_NameDialog> createState() => _NameDialogState();
@@ -134,7 +140,7 @@ class _NameDialogState extends State<_NameDialog> {
         controller: controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(labelText: 'Nombre'),
+        decoration: InputDecoration(labelText: widget.label),
         onSubmitted: (_) => submit(),
       ),
       actions: [

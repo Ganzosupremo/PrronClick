@@ -12,7 +12,7 @@ Future<void> main(List<String> args) async {
   if (!e.init()) throw StateError('audio failed');
   if (args.length > 1) e.setExtraLatencyMs(double.parse(args[1]));
   e.setLinkEnabled(true);
-  final share = await ShareChannel.follower(e);
+  final share = await ShareChannel.follower(e, port: standardLinkPort + 1);
   for (var i = 0; i < 100 && !(e.numPeers() > 0 && e.isPlaying()); i++) {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }

@@ -1,7 +1,8 @@
 // Build settings for the native engine (NativeEngine.mm + Miniaudio.m).
 // Included from Flutter/Debug.xcconfig and Flutter/Release.xcconfig.
 CLANG_CXX_LANGUAGE_STANDARD = gnu++17
-HEADER_SEARCH_PATHS = $(inherited) "$(SRCROOT)/../third_party/link/include" "$(SRCROOT)/../third_party/link/modules/asio-standalone/include" "$(SRCROOT)/../third_party/miniaudio"
+// native/link_patch first: it replaces one Link header (session codes).
+HEADER_SEARCH_PATHS = $(inherited) "$(SRCROOT)/../native/link_patch" "$(SRCROOT)/../third_party/link/include" "$(SRCROOT)/../third_party/link/modules/asio-standalone/include" "$(SRCROOT)/../third_party/miniaudio"
 // Same definitions Link's CMake config sets on Apple (AbletonLinkConfig.cmake).
 GCC_PREPROCESSOR_DEFINITIONS = $(inherited) LINK_PLATFORM_UNIX=1 LINK_PLATFORM_MACOSX=1 ASIO_NO_TYPEID=1 ASIO_STANDALONE=1 ASIO_VERSION_NAMESPACE=link_asio_1_38_2 MA_NO_RUNTIME_LINKING
 // MA_NO_RUNTIME_LINKING: link the audio frameworks instead of dlopen (App Store).

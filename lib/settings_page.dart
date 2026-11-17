@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'setlists_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key, required this.state});
@@ -61,6 +62,40 @@ class SettingsPage extends StatelessWidget {
                 ),
                 value: lib.flashCountIn,
                 onChanged: (v) => state.setFlash(countIn: v),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.groups_outlined),
+                title: Text(
+                  lib.sessionCode.isEmpty
+                      ? 'Código de sesión'
+                      : 'Código de sesión: ${lib.sessionCode}',
+                ),
+                subtitle: Text(
+                  lib.sessionCode.isEmpty
+                      ? 'Sin código: Link estándar, compatible con Ableton '
+                            'Live y otras apps. Pon uno si hay otra banda en '
+                            'la misma red.'
+                      : 'Solo comparten click los dispositivos con este '
+                            'mismo código. Ableton Live y otras apps con '
+                            'Link no os ven hasta que lo quites.',
+                ),
+                trailing: lib.sessionCode.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Quitar código (volver a Link estándar)',
+                        icon: const Icon(Icons.restart_alt),
+                        onPressed: () => state.setSessionCode(''),
+                      ),
+                onTap: () async {
+                  final code = await askName(
+                    context,
+                    title: 'Código de sesión',
+                    initial: lib.sessionCode,
+                    label: 'El mismo en toda la banda',
+                  );
+                  if (code != null) await state.setSessionCode(code);
+                },
               ),
               const Divider(),
               Padding(

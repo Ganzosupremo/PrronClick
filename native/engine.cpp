@@ -369,6 +369,12 @@ void pc_set_link_enabled(bool enabled) {
   if (g) g->link.enable(enabled);
 }
 
+// pc::linkPort only exists in native/link_patch's copy of Link's header: if
+// this does not compile, that directory is not first in the include path.
+void pc_set_link_port(int port) {
+  pc::linkPort = static_cast<unsigned short>(std::clamp(port, 1024, 65535));
+}
+
 int pc_num_peers(void) {
   return g ? static_cast<int>(g->link.numPeers()) : 0;
 }

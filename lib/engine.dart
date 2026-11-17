@@ -15,6 +15,9 @@ class Engine {
           .lookupFunction<Void Function(Bool), void Function(bool)>(
             'pc_set_link_enabled',
           ),
+      setLinkPort = lib.lookupFunction<Void Function(Int), void Function(int)>(
+        'pc_set_link_port',
+      ),
       numPeers = lib.lookupFunction<Int Function(), int Function()>(
         'pc_num_peers',
       ),
@@ -154,6 +157,9 @@ class Engine {
   final void Function() shutdown;
   final void Function(bool) setLinkEnabled;
   final int Function() numPeers;
+
+  /// The port Link finds peers on; applies the next time Link is enabled.
+  final void Function(int) setLinkPort;
   final void Function(bool) setPlaying;
   final bool Function() isPlaying;
   final void Function(double) setTempo;

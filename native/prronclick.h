@@ -26,6 +26,9 @@ PC_API void pc_shutdown(void);
 // Solo mode = Link disabled; leader/follower = Link enabled.
 PC_API void pc_set_link_enabled(bool enabled);
 PC_API int pc_num_peers(void);
+// UDP port Link finds its peers on (20808 is Link's own, shared with every
+// other Link app). Takes effect the next time Link is enabled.
+PC_API void pc_set_link_port(int port);
 
 PC_API void pc_set_playing(bool playing);
 PC_API bool pc_is_playing(void);

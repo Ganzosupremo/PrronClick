@@ -10,6 +10,9 @@ add_library(prronclick_engine SHARED
 )
 set_target_properties(prronclick_engine PROPERTIES CXX_STANDARD 17)
 target_include_directories(prronclick_engine PRIVATE ${THIRD_PARTY}/miniaudio)
+# Before Link's own headers: link_patch replaces one of them (session codes).
+target_include_directories(prronclick_engine BEFORE PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/link_patch)
 target_link_libraries(prronclick_engine PRIVATE Ableton::Link)
 link_pin_win32_winnt(prronclick_engine)
 

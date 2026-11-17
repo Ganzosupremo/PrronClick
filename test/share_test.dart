@@ -61,6 +61,20 @@ void main() {
     );
   });
 
+  test('session codes: no code is standard Link, a code is its own port', () {
+    expect(sessionPort(''), 20808);
+    expect(sessionPort('   '), 20808);
+    final azul = sessionPort('azul');
+    expect(sessionPort(' AZUL '), azul); // typed a little differently
+    expect(sessionPort('roja'), isNot(azul));
+    for (final code in ['azul', 'roja', 'ñandú 🎸', 'x' * 40]) {
+      final port = sessionPort(code);
+      expect(port, inInclusiveRange(21000, 21998));
+      expect(port.isEven, isTrue); // the odd one above is the bar broadcast
+    }
+    expect(azul, 21510); // must never change: old and new apps have to meet
+  });
+
   test('no setlist, last song, and junk from the network', () {
     expect(ShowInfo.fromMessage(wire({'song': 'Uno'}), 0).setlist, isNull);
     final last = ShowInfo.fromMessage(

@@ -26,6 +26,7 @@ class Library {
     this.ramp = false,
     this.rampBpm = 5,
     this.rampBars = 4,
+    this.sessionCode = '',
     List<Song>? songs,
     List<Setlist>? setlists,
   }) : songs = songs ?? [],
@@ -65,6 +66,10 @@ class Library {
       ramp: settings['ramp'] == true,
       rampBpm: bars(settings['rampBpm'], 5),
       rampBars: bars(settings['rampBars'], 4),
+      sessionCode: switch (settings['sessionCode']) {
+        final String s when s.length <= 40 => s.trim(),
+        _ => '',
+      },
       songs: [
         for (final s in (json['songs'] as List?) ?? const []) ?Song.fromJson(s),
       ],
@@ -95,6 +100,10 @@ class Library {
   bool ramp;
   int rampBpm;
   int rampBars;
+
+  /// Only devices with the same code share a click. Empty = standard Link,
+  /// which Ableton Live and other Link apps also join.
+  String sessionCode;
   final List<Song> songs;
   final List<Setlist> setlists;
 
@@ -167,6 +176,7 @@ class Library {
       'ramp': ramp,
       'rampBpm': rampBpm,
       'rampBars': rampBars,
+      'sessionCode': sessionCode,
     },
     'songs': [for (final s in songs) s.toJson()],
     'setlists': [for (final s in setlists) s.toJson()],

@@ -140,6 +140,24 @@
      `{meta: seccion Nombre; compases; tempo; compás}`. No tienen que ver
      con `{start_of_chorus}` y demás, que solo ordenan la letra.
 
+10. **Código de sesión** (hecho; aislamiento comprobado con dos motores en el
+    mismo PC, `tool/session_smoke.dart`; sin probar entre dispositivos):
+    - Link une a todos los que están en la red y no tiene forma de
+      separarlos: descubre a los demás en un multicast fijo
+      (224.76.78.75:20808). Con un código en Ajustes, la app cambia ese
+      puerto por uno calculado del texto (`sessionPort` en `lib/share.dart`:
+      500 puertos pares desde el 21000) y dos bandas con códigos distintos
+      no se ven. El broadcast del compás va en el puerto siguiente.
+    - Sin código es Link estándar (20808 y 20809), compatible con Ableton
+      Live y otras apps. Con código, esas apps no nos ven.
+    - El puerto se lee al abrir los sockets, así que cambiar el código apaga
+      Link, espera 300 ms y lo vuelve a encender.
+    - Link no se toca: `native/link_patch/ableton/discovery/IpInterface.hpp`
+      es una copia de ese archivo de Link con el puerto variable, y va antes
+      en la ruta de inclusión (CMake para Windows y Android, `Engine.xcconfig`
+      para iOS). Hay que volver a copiarlo al actualizar el submódulo.
+    - Límite: dos códigos pueden caer en el mismo puerto (1 entre 500).
+
 ## Audio con la pantalla apagada (Android) — hecho
 
 - `PlaybackService`: servicio en primer plano (tipo `mediaPlayback`) con
@@ -183,7 +201,6 @@
   activa el motor sigue corriendo en segundo plano aunque esté parado; pararlo
   si se queda sin sonar ni compañeros.
 - Latencia real en Windows (reloj de WASAPI).
-- Más adelante: código de sesión para varias bandas en la misma red.
 
 ## Herramientas de desarrollo
 

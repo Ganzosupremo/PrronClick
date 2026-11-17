@@ -130,15 +130,32 @@ class ShowInfo {
   );
 }
 
+/// Link's own discovery port, shared with Ableton Live and every Link app.
+const standardLinkPort = 20808;
+
+/// The port a band with this session code meets on: Link's own without a
+/// code, else one of 500 even ports from 21000 (the odd one above each is
+/// for our bar broadcast). Case and outer spaces do not count.
+int sessionPort(String code) {
+  final c = code.trim().toLowerCase();
+  if (c.isEmpty) return standardLinkPort;
+  var hash = 0x811c9dc5; // FNV-1a: the same on every device
+  for (final byte in utf8.encode(c)) {
+    hash = ((hash ^ byte) * 0x01000193) & 0xFFFFFFFF;
+  }
+  return 21000 + 2 * (hash % 500);
+}
+
 /// Shares what Link does not: where bars start and when to start playing.
 ///
 /// Link keeps tempo and beat phase in sync, but each peer numbers beats
 /// differently (off by a whole number k). The leader broadcasts its beat and
 /// bar origin; each follower works out k and shifts the origin by it.
 class ShareChannel {
-  ShareChannel._(this.engine, this.socket, {this.info, this.onInfo});
+  ShareChannel._(this.engine, this.socket, this.port, {this.info, this.onInfo});
 
-  static const port = 20809;
+  /// UDP port of the broadcast: the one above Link's (see [sessionPort]).
+  final int port;
   static const _interval = Duration(milliseconds: 300);
   // Changes (start, new meter or song) go out at once: a follower started by
   // Link must not keep stale bars until the next periodic message.
@@ -160,11 +177,12 @@ class ShareChannel {
 
   static Future<ShareChannel> leader(
     Engine engine, {
+    required int port,
     ShowInfo Function()? info,
   }) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0)
       ..broadcastEnabled = true;
-    final channel = ShareChannel._(engine, socket, info: info);
+    final channel = ShareChannel._(engine, socket, port, info: info);
     final sinceSent = Stopwatch()..start();
     String? lastState;
     channel._timer = Timer.periodic(_poll, (_) {
@@ -184,6 +202,7 @@ class ShareChannel {
 
   static Future<ShareChannel> follower(
     Engine engine, {
+    required int port,
     void Function(ShowInfo)? onInfo,
   }) async {
     final socket = await RawDatagramSocket.bind(
@@ -191,7 +210,7 @@ class ShareChannel {
       port,
       reuseAddress: true,
     );
-    final channel = ShareChannel._(engine, socket, onInfo: onInfo);
+    final channel = ShareChannel._(engine, socket, port, onInfo: onInfo);
     socket.listen((event) {
       if (event != RawSocketEvent.read) return;
       final datagram = socket.receive();

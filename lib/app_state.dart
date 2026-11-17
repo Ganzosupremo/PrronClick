@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   AppState.using(this.engine, this.store, this.library)
     : audioOk = engine.init() {
     engine.setExtraLatencyMs(library.extraLatencyMs);
+    engine.setLinkPort(sessionPort(library.sessionCode));
     _applyCountIn();
     _applyPractice();
     _applyClick();
@@ -429,10 +430,12 @@ class AppState extends ChangeNotifier {
         ShareMode.solo => null,
         ShareMode.leader => await ShareChannel.leader(
           engine,
+          port: sessionPort(library.sessionCode) + 1,
           info: () => showInfo,
         ),
         ShareMode.follower => await ShareChannel.follower(
           engine,
+          port: sessionPort(library.sessionCode) + 1,
           onInfo: (info) {
             if (info == leaderInfo) return;
             leaderInfo = info;
@@ -452,6 +455,22 @@ class AppState extends ChangeNotifier {
       // Link still syncs the beat; only bar alignment is lost.
       debugPrint('share channel unavailable: $e');
     }
+  }
+
+  /// Moves this device to the band with [code] (empty = standard Link).
+  /// Link opens its sockets when enabled, so sharing goes off and on again.
+  Future<void> setSessionCode(String code) async {
+    library.sessionCode = code.trim();
+    store.save(library);
+    notifyListeners();
+    final mode = shareMode;
+    engine.setLinkEnabled(false);
+    engine.setLinkPort(sessionPort(library.sessionCode));
+    if (mode == ShareMode.solo) return;
+    // Link closes the old sockets on its own thread: give it a moment, or
+    // off-then-on is seen as no change and it stays on the old port.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (shareMode == mode) await setShareMode(mode);
   }
 
   // ---- Practice tools and settings ----
