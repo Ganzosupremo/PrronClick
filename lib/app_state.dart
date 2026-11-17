@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'cues.dart';
 import 'engine.dart';
 import 'library.dart';
 import 'setlist.dart';
@@ -28,6 +29,8 @@ class AppState extends ChangeNotifier {
     _applyCountIn();
     _applyPractice();
     _applyClick();
+    engine.setVoiceCount(library.voiceCount);
+    _loadVoices();
     // Sections, setlists and the tempo ramp all watch the beat go by.
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     // Playing can start or stop from many places (button, Link, the leader, a
@@ -350,6 +353,7 @@ class AppState extends ChangeNotifier {
 
   void _tick() {
     _rampTick();
+    _cueTick();
     final song = currentSong;
     if (song == null || !canControl) return;
     final setlist = activeSetlist;
@@ -587,8 +591,50 @@ class AppState extends ChangeNotifier {
   /// '' follows the phone's language.
   void setLanguage(String code) {
     library.language = code;
+    _loadVoices();
     notifyListeners();
     store.save(library);
+  }
+
+  /// How many voice cues the app's language has; 0 = none in this build.
+  int voices = 0;
+
+  Future<void> _loadVoices() async {
+    final phone = PlatformDispatcher.instance.locale.languageCode;
+    final language = library.language.isNotEmpty
+        ? library.language
+        : languages.contains(phone)
+        ? phone
+        : 'en';
+    voices = await loadCues(engine, language);
+    notifyListeners();
+  }
+
+  void setVoice({bool? count, bool? sections}) {
+    library.voiceCount = count ?? library.voiceCount;
+    library.voiceSections = sections ?? library.voiceSections;
+    engine.setVoiceCount(library.voiceCount);
+    notifyListeners();
+    store.save(library);
+  }
+
+  double? _cuedBeat;
+
+  /// A bar before a section starts, a voice says its name. Followers too: they
+  /// get the leader's next section and its beat.
+  void _cueTick() {
+    final info = showInfo;
+    final name = info.nextSection, change = info.sectionChange;
+    final cue = name == null ? null : sectionCue(name);
+    if (!library.voiceSections || !engine.isPlaying() || cue == null) {
+      if (_cuedBeat != null) engine.clearCues();
+      _cuedBeat = null;
+      return;
+    }
+    final at = change! - engine.beatsPerBar();
+    if (at == _cuedBeat || at <= engine.beat()) return;
+    engine.scheduleCue(at, cue.$1, cue.$2);
+    _cuedBeat = at;
   }
 
   void setPracticeTools(bool enabled) {

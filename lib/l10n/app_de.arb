@@ -179,5 +179,10 @@
   "accentNormal": "Normal",
   "accentSilent": "Stumm",
   "accentBeat": "Schlag {beat}: {level}",
-  "accentsHelp": "Tippe auf einen Schlag, um seine Betonung zu ändern: normal, stark, mittel oder stumm. Auch auf dem Metronom."
+  "accentsHelp": "Tippe auf einen Schlag, um seine Betonung zu ändern: normal, stark, mittel oder stumm. Auch auf dem Metronom.",
+  "voiceCount": "Gesprochener Einzähler",
+  "voiceCountHelp": "Eine Stimme zählt ein: „eins, zwei, drei, vier“.",
+  "voiceSections": "Gesprochene Teile",
+  "voiceSectionsHelp": "Einen Takt vorher sagt eine Stimme den nächsten Teil an: „Refrain“, „Strophe zwei“.",
+  "voicesMissing": "Diese Version hat keine Stimmen."
 }

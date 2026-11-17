@@ -1119,6 +1119,36 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.'**
   String get accentsHelp;
+
+  /// No description provided for @voiceCount.
+  ///
+  /// In es, this message translates to:
+  /// **'Voz en la cuenta'**
+  String get voiceCount;
+
+  /// No description provided for @voiceCountHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Una voz dice los números de la cuenta: «uno, dos, tres, cuatro».'**
+  String get voiceCountHelp;
+
+  /// No description provided for @voiceSections.
+  ///
+  /// In es, this message translates to:
+  /// **'Voz en las secciones'**
+  String get voiceSections;
+
+  /// No description provided for @voiceSectionsHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Un compás antes, una voz dice la sección que viene: «Coro», «Verso dos».'**
+  String get voiceSectionsHelp;
+
+  /// No description provided for @voicesMissing.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta versión no trae voces.'**
+  String get voicesMissing;
 }
 
 class _AppLocalizationsDelegate

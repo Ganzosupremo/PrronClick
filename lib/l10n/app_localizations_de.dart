@@ -639,4 +639,21 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get accentsHelp =>
       'Tippe auf einen Schlag, um seine Betonung zu ändern: normal, stark, mittel oder stumm. Auch auf dem Metronom.';
+
+  @override
+  String get voiceCount => 'Gesprochener Einzähler';
+
+  @override
+  String get voiceCountHelp =>
+      'Eine Stimme zählt ein: „eins, zwei, drei, vier“.';
+
+  @override
+  String get voiceSections => 'Gesprochene Teile';
+
+  @override
+  String get voiceSectionsHelp =>
+      'Einen Takt vorher sagt eine Stimme den nächsten Teil an: „Refrain“, „Strophe zwei“.';
+
+  @override
+  String get voicesMissing => 'Diese Version hat keine Stimmen.';
 }

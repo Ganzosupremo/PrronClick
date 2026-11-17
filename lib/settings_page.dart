@@ -70,6 +70,26 @@ class SettingsPage extends StatelessWidget {
                 value: lib.flashCountIn,
                 onChanged: (v) => state.setFlash(countIn: v),
               ),
+              SwitchListTile(
+                title: Text(t.voiceCount),
+                subtitle: Text(
+                  state.voices == 0 ? t.voicesMissing : t.voiceCountHelp,
+                ),
+                value: lib.voiceCount,
+                onChanged: state.voices == 0
+                    ? null
+                    : (v) => state.setVoice(count: v),
+              ),
+              SwitchListTile(
+                title: Text(t.voiceSections),
+                subtitle: Text(
+                  state.voices == 0 ? t.voicesMissing : t.voiceSectionsHelp,
+                ),
+                value: lib.voiceSections,
+                onChanged: state.voices == 0
+                    ? null
+                    : (v) => state.setVoice(sections: v),
+              ),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.groups_outlined),

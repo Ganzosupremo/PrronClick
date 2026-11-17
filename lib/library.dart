@@ -26,6 +26,8 @@ class Library {
     this.sound = 0,
     this.flash = false,
     this.flashCountIn = false,
+    this.voiceCount = false,
+    this.voiceSections = false,
     this.ramp = false,
     this.rampBpm = 5,
     this.rampBars = 4,
@@ -67,6 +69,8 @@ class Library {
       },
       flash: settings['flash'] == true,
       flashCountIn: settings['flashCountIn'] == true,
+      voiceCount: settings['voiceCount'] == true,
+      voiceSections: settings['voiceSections'] == true,
       ramp: settings['ramp'] == true,
       rampBpm: bars(settings['rampBpm'], 5),
       rampBars: bars(settings['rampBars'], 4),
@@ -103,6 +107,9 @@ class Library {
 
   bool flash; // the screen flashes on each beat
   bool flashCountIn; // ...and during the count-in
+
+  bool voiceCount; // a voice counts the count-in
+  bool voiceSections; // ...and names the next section a bar ahead
 
   // Tempo ramp (practice tool): +rampBpm every rampBars bars.
   bool ramp;
@@ -184,6 +191,8 @@ class Library {
       'sound': sound,
       'flash': flash,
       'flashCountIn': flashCountIn,
+      'voiceCount': voiceCount,
+      'voiceSections': voiceSections,
       'ramp': ramp,
       'rampBpm': rampBpm,
       'rampBars': rampBars,

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #if defined(_WIN32)
 #define PC_API __declspec(dllexport)
@@ -56,6 +57,15 @@ PC_API void pc_set_beat_unit(int unit);
 // 0 = the automatic pattern. With `next`, they wait for the scheduled change
 // (the next song), if there is one.
 PC_API void pc_set_accents(unsigned bits, int count, bool next);
+// Voice cues. Loads an audio file's bytes (WAV, MP3, FLAC) into slot 1-63;
+// slots 1-8 are the counts said in the count-in. Empty data clears it.
+PC_API bool pc_load_cue(int slot, const void* data, size_t size);
+// Say the count-in's numbers (slots 1-8) on its beats.
+PC_API void pc_set_voice_count(bool on);
+// Says `slot`, then `slot2` (0 = nothing), when the beat reaches `beat`.
+// Up to 8 are kept; one on the same beat replaces the old one.
+PC_API void pc_schedule_cue(double beat, int slot, int slot2);
+PC_API void pc_clear_cues(void);
 PC_API int pc_beats_per_bar(void);
 PC_API double pc_bar_origin(void);
 PC_API int pc_pending_beats_per_bar(void);  // 0 = none

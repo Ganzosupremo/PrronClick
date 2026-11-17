@@ -3,7 +3,10 @@
 // with sections inside a setlist, then the tempo ramp:
 //   flutter test tool/sections_smoke_test.dart
 // Needs the Windows debug build's engine DLL; skipped without it.
+import 'dart:ffi';
 import 'dart:io';
+
+import 'package:ffi/ffi.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prronclick/app_state.dart';
@@ -50,6 +53,18 @@ void main() {
     final e = state.engine;
     expect(state.audioOk, isTrue);
     expect(a.lengthSeconds, 2); // 4 beats at 240 + 6 at 300
+
+    // Voice cues: the engine decodes a real WAV; a bad file is refused.
+    final wav = File('assets/voices/en/chorus.wav');
+    if (wav.existsSync()) {
+      final bytes = wav.readAsBytesSync();
+      final native = malloc<Uint8>(bytes.length);
+      native.asTypedList(bytes.length).setAll(0, bytes);
+      expect(e.loadCue(13, native.cast(), bytes.length), isTrue);
+      expect(e.loadCue(13, native.cast(), 10), isFalse);
+      malloc.free(native);
+    }
+    state.setVoice(count: true, sections: true);
 
     state.startSetlist(set);
     expect((e.tempo(), e.beatsPerBar(), state.sectionIndex), (240, 2, 0));

@@ -206,5 +206,10 @@
   "accentSilent": "Mudo",
   "accentBeat": "Pulso {beat}: {level}",
   "accentsHelp": "Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.",
-  "@accentBeat": {"placeholders": {"beat": {"type": "int"}, "level": {"type": "String"}}}
+  "@accentBeat": {"placeholders": {"beat": {"type": "int"}, "level": {"type": "String"}}},
+  "voiceCount": "Voz en la cuenta",
+  "voiceCountHelp": "Una voz dice los números de la cuenta: «uno, dos, tres, cuatro».",
+  "voiceSections": "Voz en las secciones",
+  "voiceSectionsHelp": "Un compás antes, una voz dice la sección que viene: «Coro», «Verso dos».",
+  "voicesMissing": "Esta versión no trae voces."
 }

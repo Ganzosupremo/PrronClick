@@ -29,9 +29,11 @@ PrronClick es software libre bajo la **GNU GPL versión 3 o posterior**
 LinkKit de Ableton y para distribuir por app stores
 ([`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)).
 
-- **Android** usa la librería [Ableton Link](https://github.com/Ableton/link) (GPLv2+).
-- **iOS** usa [LinkKit](https://github.com/Ableton/LinkKit), que tiene su propia
-  licencia y **no se incluye en este repo**: hay que descargarlo de sus releases.
+- **Android, iOS y Windows** usan la librería [Ableton Link](https://github.com/Ableton/link)
+  (GPLv2+), con una cabecera parcheada en `native/link_patch` (código de sesión).
+- Para publicar en el App Store hace falta la licencia propietaria de Link
+  (se pide a link-devs@ableton.com): la GPL de Link no es compatible con sus
+  condiciones, y el permiso de `LICENSE-EXCEPTION.md` solo cubre nuestro código.
 
 Para contribuir, consulta [`CONTRIBUTING.md`](CONTRIBUTING.md). Usamos DCO
 (`git commit -s`).

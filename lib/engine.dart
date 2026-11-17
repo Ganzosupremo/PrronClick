@@ -23,6 +23,23 @@ class Engine {
             Void Function(UnsignedInt, Int, Bool),
             void Function(int, int, bool)
           >('pc_set_accents'),
+      loadCue = lib
+          .lookupFunction<
+            Bool Function(Int, Pointer<Void>, Size),
+            bool Function(int, Pointer<Void>, int)
+          >('pc_load_cue'),
+      setVoiceCount = lib
+          .lookupFunction<Void Function(Bool), void Function(bool)>(
+            'pc_set_voice_count',
+          ),
+      scheduleCue = lib
+          .lookupFunction<
+            Void Function(Double, Int, Int),
+            void Function(double, int, int)
+          >('pc_schedule_cue'),
+      clearCues = lib.lookupFunction<Void Function(), void Function()>(
+        'pc_clear_cues',
+      ),
       numPeers = lib.lookupFunction<Int Function(), int Function()>(
         'pc_num_peers',
       ),
@@ -169,6 +186,12 @@ class Engine {
   /// The song's accents, 2 bits a beat (see pc_set_accents); with [next],
   /// from the scheduled change on.
   final void Function(int bits, int count, bool next) setAccents;
+
+  /// Voice cues (see pc_load_cue and the ones after it in prronclick.h).
+  final bool Function(int slot, Pointer<Void> data, int size) loadCue;
+  final void Function(bool on) setVoiceCount;
+  final void Function(double beat, int slot, int slot2) scheduleCue;
+  final void Function() clearCues;
   final void Function(bool) setPlaying;
   final bool Function() isPlaying;
   final void Function(double) setTempo;

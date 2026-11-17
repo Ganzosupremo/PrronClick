@@ -22,6 +22,13 @@ void main() {
     expect((lib.flash, lib.flashCountIn, lib.ramp), (false, false, false));
     expect(lib.extraLatencyMs, 0);
     expect(lib.language, ''); // the phone's
+    expect((lib.voiceCount, lib.voiceSections), (false, false));
+  });
+
+  test('the voice settings are kept', () async {
+    await store.save(Library(voiceCount: true, voiceSections: true));
+    final lib = await store.load();
+    expect((lib.voiceCount, lib.voiceSections), (true, true));
   });
 
   test(

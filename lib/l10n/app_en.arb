@@ -179,5 +179,10 @@
   "accentNormal": "Normal",
   "accentSilent": "Silent",
   "accentBeat": "Beat {beat}: {level}",
-  "accentsHelp": "Tap a beat to change its accent: normal, strong, medium or silent. Also on the metronome."
+  "accentsHelp": "Tap a beat to change its accent: normal, strong, medium or silent. Also on the metronome.",
+  "voiceCount": "Spoken count-in",
+  "voiceCountHelp": "A voice counts the count-in: “one, two, three, four”.",
+  "voiceSections": "Spoken sections",
+  "voiceSectionsHelp": "A bar ahead, a voice names the next section: “Chorus”, “Verse two”.",
+  "voicesMissing": "This version has no voices."
 }

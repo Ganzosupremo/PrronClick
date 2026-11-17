@@ -637,4 +637,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accentsHelp =>
       'Tap a beat to change its accent: normal, strong, medium or silent. Also on the metronome.';
+
+  @override
+  String get voiceCount => 'Spoken count-in';
+
+  @override
+  String get voiceCountHelp =>
+      'A voice counts the count-in: “one, two, three, four”.';
+
+  @override
+  String get voiceSections => 'Spoken sections';
+
+  @override
+  String get voiceSectionsHelp =>
+      'A bar ahead, a voice names the next section: “Chorus”, “Verse two”.';
+
+  @override
+  String get voicesMissing => 'This version has no voices.';
 }

@@ -8,6 +8,7 @@
 #include "rules.hpp"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -50,6 +51,19 @@ constexpr double kDivisionGain = 0.5;
 // bars come from our origin (shared by the leader) and Link only aligns beats.
 constexpr double kQuantum = 1.0;
 
+// Voice cues: decoded samples by slot (1-8 are the spoken counts). Replaced
+// whole when one is loaded, so the audio thread never sees a half-written one.
+constexpr int kCueSlots = 64;
+using CueBank = std::array<std::vector<float>, kCueSlots>;
+
+// A cue to say on a beat: slot, then slot2 right after (e.g. "verse", "two").
+struct CueEvent {
+  double beat = 0.0;
+  int slot = 0;
+  int slot2 = 0;
+};
+constexpr int kMaxCues = 8;
+
 // Bar settings plus a change scheduled at a future beat, so every peer switches
 // meter on the same downbeat.
 struct BarConfig {
@@ -70,6 +84,12 @@ struct BarConfig {
   bool pendingHasAccents = false;
   unsigned pendingAccentBits = 0;
   int pendingAccentCount = 0;
+  // shortcut: the audio thread may drop the last reference to an old bank and
+  // free it there; banks only change when the language does.
+  std::shared_ptr<const CueBank> cues;
+  bool voiceCount = false;  // say "1, 2, 3, 4" in the count-in
+  std::array<CueEvent, kMaxCues> cueEvents{};
+  int cueCount = 0;
 
   void applyPendingAt(double beat) {
     if (hasPending && beat >= pendingOrigin) {
@@ -117,7 +137,20 @@ struct Engine {
   bool clickOwn = false;
   double clickGain = 1.0;
   int clickSound = 0;
+  std::shared_ptr<const CueBank> voiceBank;  // keeps the playing sample alive
+  int voiceSlot = 0;  // 0 = silent
+  int voiceNext = 0;  // said right after
+  size_t voicePos = 0;
 };
+
+// Starts saying `slot` (then `next`), cutting off whatever was being said.
+void say(Engine& e, const BarConfig& cfg, int slot, int next) {
+  if (!cfg.cues || slot <= 0 || slot >= kCueSlots || (*cfg.cues)[slot].empty()) return;
+  e.voiceBank = cfg.cues;
+  e.voiceSlot = slot;
+  e.voiceNext = next;
+  e.voicePos = 0;
+}
 
 // Raw pointer on purpose: a static destructor would tear down the audio and Link
 // threads while the DLL unloads, which deadlocks and leaves the process running
@@ -275,6 +308,10 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
           e.clickSample = 0;
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
         } else {
+          if (cfg.voiceCount && pc::isCount(cfg.rules, coord)) {
+            const long n = pc::mod(pc::floorDiv(coord - cfg.rules.origin), cfg.rules.beatsPerBar) + 1;
+            if (n <= 8) say(e, cfg, static_cast<int>(n), 0);
+          }
           e.clickOwn = false;
           e.clickGain = 1.0;
           e.clickSound = e.sound;
@@ -287,9 +324,16 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
           e.clickLength = static_cast<long>(kClickSeconds * e.sampleRate);
         }
       }
+      if (!e.calibrating && beat >= 0.0) {
+        for (int c = 0; c < cfg.cueCount; ++c) {
+          const auto& cue = cfg.cueEvents[c];
+          if (e.lastBeat < cue.beat && beat >= cue.beat) say(e, cfg, cue.slot, cue.slot2);
+        }
+      }
       e.lastBeat = beat;
     } else {
       e.lastBeat = -1.0;
+      e.voiceSlot = 0;  // stopping cuts the voice off
     }
 
     float sample = 0.0f;
@@ -300,6 +344,17 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
                      : 0.6 * e.clickGain * volume * clickWave(e.clickSound, e.clickFreq, t));
       ++e.clickSample;
     }
+    if (e.voiceSlot > 0) {
+      const auto& voice = (*e.voiceBank)[e.voiceSlot];
+      sample += static_cast<float>(volume) * voice[e.voicePos];
+      if (++e.voicePos >= voice.size()) {
+        e.voicePos = 0;
+        e.voiceSlot = e.voiceNext > 0 && e.voiceNext < kCueSlots && !(*e.voiceBank)[e.voiceNext].empty()
+                          ? e.voiceNext : 0;
+        e.voiceNext = 0;
+      }
+    }
+    sample = std::clamp(sample, -1.0f, 1.0f);
     for (ma_uint32 c = 0; c < channels; ++c) {
       out[i * channels + c] = sample;
     }
@@ -491,6 +546,58 @@ void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUn
   c.pendingOrigin = nextOrigin;
 }
 
+bool pc_load_cue(int slot, const void* data, size_t size) {
+  if (!g || slot <= 0 || slot >= kCueSlots) return false;
+  std::vector<float> samples;
+  if (data != nullptr && size > 0) {
+    // Any format miniaudio reads, as mono at the device's rate.
+    ma_decoder_config dc =
+        ma_decoder_config_init(ma_format_f32, 1, static_cast<ma_uint32>(g->sampleRate));
+    ma_decoder decoder;
+    if (ma_decoder_init_memory(data, size, &dc, &decoder) != MA_SUCCESS) return false;
+    float chunk[4096];
+    ma_uint64 read = 0;
+    while (ma_decoder_read_pcm_frames(&decoder, chunk, 4096, &read) == MA_SUCCESS && read > 0) {
+      samples.insert(samples.end(), chunk, chunk + read);
+      if (samples.size() > static_cast<size_t>(g->sampleRate) * 5) break;  // cues are short
+    }
+    ma_decoder_uninit(&decoder);
+  }
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto bank = g->config.cues ? std::make_shared<CueBank>(*g->config.cues)
+                             : std::make_shared<CueBank>();
+  (*bank)[slot] = std::move(samples);
+  g->config.cues = std::move(bank);
+  return true;
+}
+
+void pc_set_voice_count(bool on) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.voiceCount = on;
+}
+
+void pc_schedule_cue(double beat, int slot, int slot2) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto& c = g->config;
+  // Replaces a cue on the same beat; else the oldest makes room.
+  int at = 0;
+  while (at < c.cueCount && std::fabs(c.cueEvents[at].beat - beat) > 1e-6) ++at;
+  if (at == kMaxCues) {
+    std::move(c.cueEvents.begin() + 1, c.cueEvents.end(), c.cueEvents.begin());
+    at = kMaxCues - 1;
+  }
+  c.cueEvents[at] = {beat, slot, slot2};
+  c.cueCount = std::max(c.cueCount, at + 1);
+}
+
+void pc_clear_cues(void) {
+  if (!g) return;
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  g->config.cueCount = 0;
+}
+
 void pc_set_accents(unsigned bits, int count, bool next) {
   if (!g) return;
   count = std::clamp(count, 0, 16);
@@ -506,6 +613,8 @@ void pc_set_accents(unsigned bits, int count, bool next) {
   }
 }
 
+}  // extern "C"
+
 // Reads the bar settings, applying a due pending change so the UI agrees with
 // what is heard.
 static BarConfig currentConfig() {
@@ -515,6 +624,8 @@ static BarConfig currentConfig() {
   if (state.isPlaying()) g->config.applyPendingAt(beat);
   return g->config;
 }
+
+extern "C" {
 
 int pc_beats_per_bar(void) { return g ? currentConfig().rules.beatsPerBar : 4; }
 double pc_bar_origin(void) { return g ? currentConfig().rules.origin : 0.0; }

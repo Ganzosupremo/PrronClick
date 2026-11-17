@@ -33,7 +33,8 @@ together with these additional permissions.
 These permissions apply only to code whose copyright holders have released it
 under these terms. They do not apply to third-party code included in this
 Program under the plain GNU GPL, such as the Ableton Link C++ library used by
-the Android build.
+the Android, iOS and Windows builds: an App Store build needs Ableton's
+proprietary Link license as well.
 
 You may remove these additional permissions from your copy of this Program,
 or from any part of it, as described in section 7 of the GNU GPL version 3.

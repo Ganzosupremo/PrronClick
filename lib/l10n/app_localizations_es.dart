@@ -638,4 +638,21 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get accentsHelp =>
       'Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.';
+
+  @override
+  String get voiceCount => 'Voz en la cuenta';
+
+  @override
+  String get voiceCountHelp =>
+      'Una voz dice los números de la cuenta: «uno, dos, tres, cuatro».';
+
+  @override
+  String get voiceSections => 'Voz en las secciones';
+
+  @override
+  String get voiceSectionsHelp =>
+      'Un compás antes, una voz dice la sección que viene: «Coro», «Verso dos».';
+
+  @override
+  String get voicesMissing => 'Esta versión no trae voces.';
 }

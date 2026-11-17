@@ -33,6 +33,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  ffi: ^2.1.0
   material_ui: ^1.1.0
 
   # The following adds the Cupertino Icons font to your application.
@@ -63,6 +64,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   generate: true
+  # Voice cues by language (see assets/voices/README.md).
+  assets:
+    - assets/voices/es/
+    - assets/voices/en/
+    - assets/voices/de/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
