@@ -40,6 +40,10 @@ void main() {
       find.widgetWithText(TextFormField, 'Nombre'),
       'Vals',
     );
+    // An accent set in 4/4 is dropped when the meter changes.
+    await tester.tap(find.bySemanticsLabel('Pulso 2: Normal'));
+    await tester.pump();
+    expect(find.bySemanticsLabel('Pulso 2: Fuerte'), findsOneWidget);
     await tester.tap(find.text('4/4'));
     await tester.pumpAndSettle();
 
@@ -51,6 +55,12 @@ void main() {
     await tester.tap(find.text('Usar 6/16'));
     await tester.pumpAndSettle();
     expect(find.text('6/16'), findsOneWidget);
+    // Strong -> medium -> silent.
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.bySemanticsLabel(RegExp('^Pulso 1:')));
+      await tester.pump();
+    }
+    expect(find.bySemanticsLabel('Pulso 1: Mudo'), findsOneWidget);
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Tonalidad (opcional)'),
@@ -78,6 +88,7 @@ void main() {
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
     expect((saved!.name, saved!.meter, saved!.key), ('Vals', '6/16', 'Am'));
+    expect(saved!.accents, [3, 2, 2, 2, 2, 2]);
     final section = saved!.sections.single;
     expect((section.name, section.bars, section.bpm), ('Coro', 12, 90));
     expect((section.beatsPerBar, saved!.unitAt(0)), (null, 16));

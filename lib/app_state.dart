@@ -104,6 +104,32 @@ class AppState extends ChangeNotifier {
     engine.setBeatUnit(unit);
   }
 
+  /// The bar's accents (null = automatic): the leader's when following,
+  /// else the song's or set by hand.
+  List<int>? get accents =>
+      shareMode == ShareMode.follower ? leaderInfo.accents : _accents;
+  List<int>? _accents;
+
+  void _sendAccents(List<int>? accents, {bool next = false}) => engine
+      .setAccents(accentBits(accents ?? const []), accents?.length ?? 0, next);
+
+  /// Tapping beat [index] of a bar of [beats] (see [nextAccent]). The
+  /// loaded song keeps it.
+  void cycleAccent(int index, int beats) {
+    final auto = defaultAccents(beats, beatUnit);
+    final levels = [...(_accents?.length == beats ? _accents! : auto)];
+    levels[index] = nextAccent(levels[index]);
+    _accents = sameAccents(levels, auto) ? null : levels;
+    _sendAccents(_accents);
+    final song = currentSong;
+    if (song != null && song.beatsPerBar == beats) {
+      song.accents = _accents;
+      _libraryChanged();
+    } else {
+      notifyListeners();
+    }
+  }
+
   /// The song whose lyrics to show: ours, or as a follower our own copy of
   /// the leader's song, found by name (lyrics are too big to broadcast).
   Song? get shownSong =>
@@ -133,6 +159,7 @@ class AppState extends ChangeNotifier {
       key: song?.key,
       note: song?.note,
       beatUnit: beatUnit,
+      accents: _accents,
       section: sections.elementAtOrNull(sectionIndex)?.name,
       nextSection: next == null ? null : sections.elementAtOrNull(next)?.name,
       sectionChange: next == null ? null : _changeBeat,
@@ -200,6 +227,9 @@ class AppState extends ChangeNotifier {
     engine.setTempo(song.bpmAt(0));
     engine.setBeatsPerBar(song.beatsAt(0));
     beatUnit = song.unitAt(0);
+    // While playing, from the downbeat the new meter starts on.
+    _accents = song.accents;
+    _sendAccents(_accents, next: true);
     currentSong = song;
     notifyListeners();
   }
@@ -304,6 +334,7 @@ class AppState extends ChangeNotifier {
     if (index < songs.length) {
       final song = songs[index];
       engine.scheduleSong(beat, song.bpmAt(0), song.beatsAt(0), pauseBars);
+      _sendAccents(song.accents, next: true);
     } else {
       engine.scheduleSong(beat, 0, engine.beatsPerBar(), 0); // end of setlist
     }
@@ -346,6 +377,7 @@ class AppState extends ChangeNotifier {
         if (setlistIndex < songs.length) {
           currentSong = songs[setlistIndex];
           beatUnit = currentSong!.unitAt(0);
+          _accents = currentSong!.accents; // the engine switched on the beat
         }
       }
       notifyListeners();
@@ -423,6 +455,7 @@ class AppState extends ChangeNotifier {
     leaderInfo = const ShowInfo();
     _followedSong = null;
     engine.setBeatUnit(beatUnit); // back to ours after following a leader
+    _sendAccents(_accents);
     if (mode == ShareMode.follower && activeSetlist != null) stopSetlist();
     notifyListeners();
     _channel?.close();
@@ -442,6 +475,9 @@ class AppState extends ChangeNotifier {
             if (info == leaderInfo) return;
             leaderInfo = info;
             engine.setBeatUnit(info.beatUnit);
+            // shortcut: applied when heard, so a new song's first beat may
+            // keep the old accents; send the next song's ahead if it matters.
+            _sendAccents(info.accents);
             _findFollowedSong();
             notifyListeners();
           },

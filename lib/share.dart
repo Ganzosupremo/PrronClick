@@ -14,6 +14,7 @@ class ShowInfo {
     this.key,
     this.note,
     this.beatUnit = 4,
+    this.accents,
     this.section,
     this.nextSection,
     this.sectionChange,
@@ -28,6 +29,7 @@ class ShowInfo {
   final String? key; // the song's musical key
   final String? note; // the song's one-line note for the band
   final int beatUnit; // the meter's lower number (notation only)
+  final List<int>? accents; // the song's own; null = automatic
   final String? section; // the song's section playing now
   final String? nextSection; // the one scheduled, once it is
   final double? sectionChange; // the beat where it starts
@@ -42,6 +44,7 @@ class ShowInfo {
     'key': ?key,
     'note': ?note,
     if (beatUnit != 4) 'unit': beatUnit,
+    'accents': ?accents,
     'section': ?section,
     if (nextSection != null)
       'nextSection': {'name': nextSection, 'at': sectionChange},
@@ -63,6 +66,7 @@ class ShowInfo {
     final s = m['setlist'];
     final song = text(m['song']), key = text(m['key']), note = text(m['note']);
     final unit = beatUnits.contains(m['unit']) ? m['unit'] as int : 4;
+    final accents = parseAccents(m['accents']);
     final ns = m['nextSection'];
     final nextSection = ns is Map ? text(ns['name']) : null;
     final at = ns is Map ? ns['at'] : null;
@@ -75,6 +79,7 @@ class ShowInfo {
         key: key,
         note: note,
         beatUnit: unit,
+        accents: accents,
         section: text(m['section']),
         nextSection: nextSection,
         sectionChange: sectionChange,
@@ -86,6 +91,7 @@ class ShowInfo {
       key: key,
       note: note,
       beatUnit: unit,
+      accents: accents,
       section: text(m['section']),
       nextSection: nextSection,
       sectionChange: sectionChange,
@@ -104,6 +110,7 @@ class ShowInfo {
       other.key == key &&
       other.note == note &&
       other.beatUnit == beatUnit &&
+      sameAccents(other.accents, accents) &&
       other.section == section &&
       other.nextSection == nextSection &&
       other.sectionChange == sectionChange &&
@@ -119,6 +126,7 @@ class ShowInfo {
     key,
     note,
     beatUnit,
+    accentBits(accents ?? const []),
     section,
     nextSection,
     sectionChange,

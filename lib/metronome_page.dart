@@ -2,6 +2,7 @@
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'accent_circles.dart';
 import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'lyrics_view.dart';
@@ -98,7 +99,7 @@ class _MetronomePageState extends State<MetronomePage>
     final shownBeats = pendingBeatsPerBar > 0
         ? pendingBeatsPerBar
         : beatsPerBar;
-    final group = accentGroup(beatsPerBar, info.beatUnit);
+    final accents = state.accents;
     final aboutSong = [?info.section, ?info.key, ?info.note].join(' · ');
     final sectionChange = info.sectionChange;
     String? comingUp;
@@ -181,29 +182,13 @@ class _MetronomePageState extends State<MetronomePage>
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
-        // Long bars (12/8, 16/4) shrink to fit the width.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            children: [
-              for (var i = 0; i < beatsPerBar; i++)
-                Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: CircleAvatar(
-                    // Bigger on the accent, a little bigger where a group of
-                    // three starts in 6/8.
-                    radius: i == 0
-                        ? 18
-                        : group > 0 && i % group == 0
-                        ? 16
-                        : 14,
-                    backgroundColor: i == currentBeat
-                        ? scheme.primary
-                        : scheme.surfaceContainerHighest,
-                  ),
-                ),
-            ],
-          ),
+        // The count-in always counts plainly (see accentLevel in rules.hpp).
+        AccentCircles(
+          levels: !counting && accents?.length == beatsPerBar
+              ? accents!
+              : defaultAccents(beatsPerBar, info.beatUnit),
+          current: currentBeat,
+          onTap: canControl ? (i) => state.cycleAccent(i, beatsPerBar) : null,
         ),
         SizedBox(
           height: 24,

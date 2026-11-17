@@ -8,6 +8,53 @@ const beatUnits = [2, 4, 8, 16];
 int accentGroup(int beats, int unit) =>
     unit == 8 && beats > 3 && beats % 3 == 0 ? 3 : 0;
 
+/// How a beat sounds, numbered as the engine does (see Accent in rules.hpp).
+const accentStrong = 0, accentMedium = 1, accentNormal = 2, accentSilent = 3;
+
+/// The level a tap moves a beat to: normal, strong, medium, silent, normal.
+int nextAccent(int level) => const [
+  accentMedium,
+  accentSilent,
+  accentStrong,
+  accentNormal,
+][level];
+
+/// The bar's pattern when the song sets none.
+List<int> defaultAccents(int beats, int unit) {
+  final group = accentGroup(beats, unit);
+  return [
+    for (var i = 0; i < beats; i++)
+      i == 0
+          ? accentStrong
+          : group > 0 && i % group == 0
+          ? accentMedium
+          : accentNormal,
+  ];
+}
+
+/// [accents] as the engine takes them: 2 bits a beat, first beat lowest.
+int accentBits(List<int> accents) {
+  var bits = 0;
+  for (final (i, level) in accents.indexed) {
+    bits |= level << (2 * i);
+  }
+  return bits;
+}
+
+/// A pattern from a file or the network, or null if it is not one.
+List<int>? parseAccents(Object? v) =>
+    v is List &&
+        v.isNotEmpty &&
+        v.length <= 16 &&
+        v.every((l) => l is int && l >= 0 && l <= 3)
+    ? List<int>.from(v)
+    : null;
+
+/// Same pattern (null = automatic).
+bool sameAccents(List<int>? a, List<int>? b) => a == null || b == null
+    ? a == b
+    : a.length == b.length && a.indexed.every((e) => b[e.$1] == e.$2);
+
 /// A stretch of a song with its own length and, if set, tempo and meter.
 class Section {
   Section({
@@ -59,6 +106,7 @@ class Song {
     this.key,
     this.note,
     this.lyrics,
+    this.accents,
     List<Section>? sections,
   }) : sections = sections ?? [];
 
@@ -82,6 +130,10 @@ class Song {
       key: text(json['key']),
       note: text(json['note']),
       lyrics: text(json['lyrics']),
+      accents: switch (parseAccents(json['accents'])) {
+        final a? when a.length == bpb.clamp(1, 16) => a,
+        _ => null,
+      },
       sections: [
         if (json['sections'] case final List list)
           for (final s in list) ?Section.fromJson(s),
@@ -101,6 +153,10 @@ class Song {
   String? key; // musical key, e.g. "Am"
   String? note; // one line for the band, e.g. "drums start alone"
   String? lyrics; // ChordPro body: lyrics with [chords] and {comment: ...}
+
+  /// The bar's own accents, one level per beat; null = the automatic ones.
+  /// Only bars of [beatsPerBar] beats use them.
+  List<int>? accents;
 
   /// Played in order, each for its bars; empty = one stretch, the whole song.
   List<Section> sections;
@@ -136,6 +192,7 @@ class Song {
     key = other.key;
     note = other.note;
     lyrics = other.lyrics;
+    accents = other.accents == null ? null : [...other.accents!];
     sections = [for (final s in other.sections) Section.fromJson(s.toJson())!];
   }
 
@@ -149,6 +206,7 @@ class Song {
     'key': ?key,
     'note': ?note,
     'lyrics': ?lyrics,
+    'accents': ?accents,
     if (sections.isNotEmpty) 'sections': [for (final s in sections) s.toJson()],
   };
 

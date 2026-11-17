@@ -117,6 +117,26 @@ void main() {
     expect(Song.fromJson(song.toJson())!.toJson(), song.toJson());
   });
 
+  test('accents: written as symbols, read back; wrong length is dropped', () {
+    final song = Song(id: 'a', name: 'A', bpm: 100, beatsPerBar: 4)
+      ..accents = [accentNormal, accentStrong, accentMedium, accentSilent];
+    final text = toChordPro([song]);
+    expect(text, contains('{meta: acentos . > - x}'));
+    expect(parseChordPro(text).single.accents, song.accents);
+    expect(Song.fromJson(song.toJson())!.accents, song.accents);
+    // Three accents in 4/4, an unknown symbol: automatic accents instead.
+    expect(
+      parseChordPro('{t: B}\n{time: 4/4}\n{meta: accents > . .}')
+          .single
+          .accents,
+      isNull,
+    );
+    final odd = parseChordPro('{t: C}\n{meta: acentos > ? . .}').single;
+    expect((odd.accents, odd.lyrics), (null, '{meta: acentos > ? . .}'));
+    expect(defaultAccents(6, 8), [0, 2, 2, 1, 2, 2]);
+    expect(accentBits([accentNormal, accentSilent]), 2 | 3 << 2);
+  });
+
   test('importing a song again updates ours and keeps its id', () {
     final ours = Song(id: 'mine', name: 'La bikina', bpm: 80, beatsPerBar: 4);
     final lib = Library(songs: [ours]);

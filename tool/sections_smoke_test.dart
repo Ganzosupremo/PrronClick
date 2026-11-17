@@ -85,5 +85,16 @@ void main() {
     e.setPlaying(false);
     await until(() => state.sectionIndex == 0, 'back to section X');
     expect((e.tempo().round(), e.beatsPerBar()), (240, 2));
+
+    // Tapping beats on the metronome: the loaded song keeps its accents.
+    state.cycleAccent(1, 2);
+    expect(state.accents, [accentStrong, accentStrong]);
+    expect(state.currentSong!.accents, [accentStrong, accentStrong]);
+    state.cycleAccent(1, 2); // medium
+    state.cycleAccent(1, 2); // silent
+    state.cycleAccent(1, 2); // normal again: the automatic pattern
+    expect((state.accents, state.currentSong!.accents), (null, null));
+    // The library is saved in the background: let it finish before cleanup.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
   }, skip: File(dll).existsSync() ? false : 'no engine at $dll');
 }

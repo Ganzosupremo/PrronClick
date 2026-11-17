@@ -60,6 +60,8 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
     }
     if (body.isNotEmpty) song.lyrics = body.join('\n');
     // Skip the nothing between two {new_song} or after the last one.
+    // Accents for another meter mean nothing: back to the automatic ones.
+    if (song.accents?.length != song.beatsPerBar) song.accents = null;
     if (named || body.isNotEmpty) songs.add(song);
   }
 
@@ -101,12 +103,30 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
         song.note = value.substring(4).trim();
       case 'meta' when _section(value) != null:
         song.sections.add(_section(value)!);
+      case 'meta' when _accents(value) != null:
+        song.accents = _accents(value);
       default:
         body.add(line);
     }
   }
   finish();
   return songs;
+}
+
+// Accent symbols, one per beat: "acentos > . - x".
+const _accentSymbols = ['>', '-', '.', 'x'];
+
+List<int>? _accents(String value) {
+  final m = RegExp(
+    r'^(?:acentos|accents|akzente)\s+(.+)$',
+    caseSensitive: false,
+  ).firstMatch(value);
+  if (m == null) return null;
+  final levels = [
+    for (final s in m.group(1)!.trim().split(RegExp(r'\s+')))
+      _accentSymbols.indexOf(s.toLowerCase()),
+  ];
+  return levels.contains(-1) ? null : parseAccents(levels);
 }
 
 /// A click section: "seccion Name; bars[; bpm][; beats/unit]" (ChordPro has
@@ -143,6 +163,8 @@ String toChordPro(Iterable<Song> songs) => [
       '{time: ${s.meter}}',
       if (s.durationSeconds case final d?) '{duration: ${formatDuration(d)}}',
       if (s.note != null) '{meta: nota ${s.note}}',
+      if (s.accents case final a?)
+        '{meta: acentos ${[for (final l in a) _accentSymbols[l]].join(' ')}}',
       for (final c in s.sections)
         '{meta: seccion ${[c.name.replaceAll(';', ','), c.bars, if (c.bpm case final bpm?) bpm.round(), if (c.beatsPerBar case final beats?) '$beats/${c.beatUnit ?? 4}'].join('; ')}}',
       if (s.lyrics != null) '\n${s.lyrics}',

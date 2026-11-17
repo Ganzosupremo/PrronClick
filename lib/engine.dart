@@ -18,6 +18,11 @@ class Engine {
       setLinkPort = lib.lookupFunction<Void Function(Int), void Function(int)>(
         'pc_set_link_port',
       ),
+      setAccents = lib
+          .lookupFunction<
+            Void Function(UnsignedInt, Int, Bool),
+            void Function(int, int, bool)
+          >('pc_set_accents'),
       numPeers = lib.lookupFunction<Int Function(), int Function()>(
         'pc_num_peers',
       ),
@@ -160,6 +165,10 @@ class Engine {
 
   /// The port Link finds peers on; applies the next time Link is enabled.
   final void Function(int) setLinkPort;
+
+  /// The song's accents, 2 bits a beat (see pc_set_accents); with [next],
+  /// from the scheduled change on.
+  final void Function(int bits, int count, bool next) setAccents;
   final void Function(bool) setPlaying;
   final bool Function() isPlaying;
   final void Function(double) setTempo;

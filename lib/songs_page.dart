@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'package:material_ui/material_ui.dart';
 
+import 'accent_circles.dart';
 import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'meter_picker.dart';
@@ -225,6 +226,9 @@ class _SongEditorState extends State<SongEditor> {
   );
   late int beatsPerBar = widget.song?.beatsPerBar ?? 4;
   late int beatUnit = widget.song?.beatUnit ?? 4;
+  late List<int>? accents = widget.song?.accents == null
+      ? null
+      : [...widget.song!.accents!];
   late final key = TextEditingController(text: widget.song?.key);
   late final note = TextEditingController(text: widget.song?.note);
   late final lyrics = TextEditingController(text: widget.song?.lyrics);
@@ -252,9 +256,18 @@ class _SongEditorState extends State<SongEditor> {
     final picked = await pickMeter(context, beatsPerBar, beatUnit);
     if (picked == null) return;
     setState(() {
+      // Another meter: the accents start over from the automatic ones.
+      if (picked.$1 != beatsPerBar || picked.$2 != beatUnit) accents = null;
       beatsPerBar = picked.$1;
       beatUnit = picked.$2;
     });
+  }
+
+  void _cycleAccent(int i) {
+    final auto = defaultAccents(beatsPerBar, beatUnit);
+    final levels = [...accents ?? auto];
+    levels[i] = nextAccent(levels[i]);
+    setState(() => accents = sameAccents(levels, auto) ? null : levels);
   }
 
   Future<void> _editSection([int? index]) async {
@@ -294,6 +307,7 @@ class _SongEditorState extends State<SongEditor> {
       ..key = orNull(key.text)
       ..note = orNull(note.text)
       ..lyrics = orNull(lyrics.text)
+      ..accents = accents
       ..sections = sections;
     Navigator.pop(context, song);
   }
@@ -341,6 +355,12 @@ class _SongEditorState extends State<SongEditor> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            AccentCircles(
+              levels: accents ?? defaultAccents(beatsPerBar, beatUnit),
+              onTap: _cycleAccent,
+            ),
+            Text(t.accentsHelp, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 16),
             TextFormField(
               controller: duration,

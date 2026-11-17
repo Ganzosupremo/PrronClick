@@ -616,4 +616,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bridge => 'Bridge';
+
+  @override
+  String get accentStrong => 'Strong';
+
+  @override
+  String get accentMedium => 'Medium';
+
+  @override
+  String get accentNormal => 'Normal';
+
+  @override
+  String get accentSilent => 'Silent';
+
+  @override
+  String accentBeat(int beat, String level) {
+    return 'Beat $beat: $level';
+  }
+
+  @override
+  String get accentsHelp =>
+      'Tap a beat to change its accent: normal, strong, medium or silent. Also on the metronome.';
 }

@@ -34,6 +34,20 @@ void main() {
     expect(ShowInfo.fromMessage(wire({'unit': 5, 'key': 3}), 0).beatUnit, 4);
   });
 
+  test("the song's accents reach followers; junk is ignored", () {
+    const info = ShowInfo(song: 'Dos', accents: [2, 0, 3]);
+    expect(ShowInfo.fromMessage(wire(info.toJson()), 0), info);
+    expect(info == const ShowInfo(song: 'Dos', accents: [2, 0, 1]), isFalse);
+    for (final junk in [
+      [4, 0],
+      'x',
+      List.filled(17, 0),
+      <int>[],
+    ]) {
+      expect(ShowInfo.fromMessage(wire({'accents': junk}), 0).accents, isNull);
+    }
+  });
+
   test('the section playing and the next one reach followers', () {
     const info = ShowInfo(
       song: 'Dos',

@@ -173,5 +173,11 @@
 
   "chorus": "Refrain",
   "verse": "Strophe",
-  "bridge": "Bridge"
+  "bridge": "Bridge",
+  "accentStrong": "Stark",
+  "accentMedium": "Mittel",
+  "accentNormal": "Normal",
+  "accentSilent": "Stumm",
+  "accentBeat": "Schlag {beat}: {level}",
+  "accentsHelp": "Tippe auf einen Schlag, um seine Betonung zu ändern: normal, stark, mittel oder stumm. Auch auf dem Metronom."
 }

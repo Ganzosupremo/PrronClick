@@ -66,6 +66,10 @@ struct BarConfig {
   bool pendingSong = false;
   double pendingBpm = 0.0;
   unsigned songChangeId = 0;  // bumped per schedule so it is applied once
+  // Accents for the pending change (the next song's); else they stay.
+  bool pendingHasAccents = false;
+  unsigned pendingAccentBits = 0;
+  int pendingAccentCount = 0;
 
   void applyPendingAt(double beat) {
     if (hasPending && beat >= pendingOrigin) {
@@ -73,7 +77,12 @@ struct BarConfig {
       rules.origin = pendingOrigin;
       rules.muteUntil = pendingOrigin + pendingMuteBeats;
       rules.countUntil = rules.muteUntil + pendingCountBeats;
+      if (pendingHasAccents) {
+        rules.accentBits = pendingAccentBits;
+        rules.accentCount = pendingAccentCount;
+      }
       hasPending = false;
+      pendingHasAccents = false;
     }
   }
 };
@@ -256,8 +265,8 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
       } else if (const bool onBeat = beat >= 0.0 && pc::crosses(cfg.rules, e.lastBeat, beat);
                  onBeat || (beat >= 0.0 && pc::crossesDivision(cfg.rules, e.lastBeat, beat))) {
         const double coord = std::floor(pc::clickCoord(cfg.rules, beat));
-        if (pc::isMuted(cfg.rules, coord)) {
-          // silent bar
+        if (pc::isSilent(cfg.rules, coord)) {
+          // silent bar or silent beat, with its subdivisions
         } else if (!onBeat) {
           e.clickOwn = false;
           e.clickFreq = pc::isCount(cfg.rules, coord) ? kCountDivisionHz : kDivisionHz;
@@ -269,9 +278,8 @@ void render(ma_device* device, void* output, const void*, ma_uint32 frames) {
           e.clickOwn = false;
           e.clickGain = 1.0;
           e.clickSound = e.sound;
-          // 0 = accent, 1 = lighter accent, 2 = plain beat.
-          const int kind = pc::isAccent(cfg.rules, coord) ? 0
-                           : pc::isSubAccent(cfg.rules, coord) ? 1 : 2;
+          // 0 = accent, 1 = lighter accent, 2 = plain beat (silent: above).
+          const int kind = pc::accentLevel(cfg.rules, coord);
           static constexpr double kSong[] = {kAccentHz, kSubAccentHz, kBeatHz};
           static constexpr double kCount[] = {kCountAccentHz, kCountSubAccentHz, kCountHz};
           e.clickFreq = (pc::isCount(cfg.rules, coord) ? kCount : kSong)[kind];
@@ -438,6 +446,7 @@ void pc_set_beats_per_bar(int beats) {
   c.pendingCountBeats = 0.0;
   c.hasPending = true;
   c.pendingSong = false;
+  c.pendingHasAccents = false;
 }
 
 // A tempo and meter change on `beat`; a new song adds its pause and count-in.
@@ -452,6 +461,7 @@ static void schedule(double beat, double bpm, int beatsPerBar, int pauseBars, bo
   c.pendingCountBeats = newSong && bpm > 0.0 ? c.countBars * c.pendingBeatsPerBar : 0.0;
   c.pendingSong = true;
   c.pendingBpm = bpm > 0.0 ? std::clamp(bpm, 20.0, 300.0) : 0.0;
+  c.pendingHasAccents = false;
   ++c.songChangeId;
 }
 
@@ -479,6 +489,21 @@ void pc_set_bar(int beatsPerBar, double origin, double muteUntil, double countUn
   c.pendingSong = false;
   c.pendingBeatsPerBar = std::clamp(nextBeatsPerBar, 1, 16);
   c.pendingOrigin = nextOrigin;
+}
+
+void pc_set_accents(unsigned bits, int count, bool next) {
+  if (!g) return;
+  count = std::clamp(count, 0, 16);
+  std::lock_guard<std::mutex> lock(g->configMutex);
+  auto& c = g->config;
+  if (next && c.hasPending) {
+    c.pendingHasAccents = true;
+    c.pendingAccentBits = bits;
+    c.pendingAccentCount = count;
+  } else {
+    c.rules.accentBits = bits;
+    c.rules.accentCount = count;
+  }
 }
 
 // Reads the bar settings, applying a due pending change so the UI agrees with

@@ -173,5 +173,11 @@
 
   "chorus": "Chorus",
   "verse": "Verse",
-  "bridge": "Bridge"
+  "bridge": "Bridge",
+  "accentStrong": "Strong",
+  "accentMedium": "Medium",
+  "accentNormal": "Normal",
+  "accentSilent": "Silent",
+  "accentBeat": "Beat {beat}: {level}",
+  "accentsHelp": "Tap a beat to change its accent: normal, strong, medium or silent. Also on the metronome."
 }

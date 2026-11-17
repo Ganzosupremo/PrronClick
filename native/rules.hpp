@@ -17,7 +17,13 @@ struct Rules {
   double muteUntil = 0;  // silent from origin up to this beat (setlist pause)
   double countUntil = 0; // count-in: after the pause, another pitch up to here
   int subdivision = 1;   // softer clicks per beat on this device; 1 = none
+  // The song's own accents: 2 bits per beat (see accentLevel), used only in
+  // bars of exactly accentCount beats; 0 = the automatic pattern.
+  unsigned accentBits = 0;
+  int accentCount = 0;
 };
+
+enum Accent { kStrong = 0, kMedium = 1, kNormal = 2, kSilent = 3 };
 
 inline long floorDiv(double x) { return static_cast<long>(std::floor(x)); }
 inline long mod(long a, long n) { return ((a % n) + n) % n; }
@@ -55,6 +61,20 @@ inline bool isSubAccent(const Rules& r, double coord) {
   if (r.beatUnit != 8 || r.beatsPerBar <= 3 || r.beatsPerBar % 3 != 0) return false;
   const long inBar = mod(floorDiv(coord - r.origin), r.beatsPerBar);
   return inBar != 0 && inBar % 3 == 0;
+}
+
+// How the beat at coord sounds. The count-in always counts plainly.
+inline int accentLevel(const Rules& r, double coord) {
+  const bool own = r.accentCount == r.beatsPerBar && !isCount(r, coord);
+  if (!own) return isAccent(r, coord) ? kStrong : isSubAccent(r, coord) ? kMedium : kNormal;
+  const long inBar = mod(floorDiv(coord - r.origin), r.beatsPerBar);
+  return static_cast<int>((r.accentBits >> (2 * inBar)) & 3u);
+}
+
+// Nothing sounds at coord, its subdivisions included: a silent bar, or a
+// beat the song marks silent.
+inline bool isSilent(const Rules& r, double coord) {
+  return isMuted(r, coord) || accentLevel(r, coord) == kSilent;
 }
 
 inline bool crosses(const Rules& r, double prev, double beat) {

@@ -1083,6 +1083,42 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Puente'**
   String get bridge;
+
+  /// No description provided for @accentStrong.
+  ///
+  /// In es, this message translates to:
+  /// **'Fuerte'**
+  String get accentStrong;
+
+  /// No description provided for @accentMedium.
+  ///
+  /// In es, this message translates to:
+  /// **'Medio'**
+  String get accentMedium;
+
+  /// No description provided for @accentNormal.
+  ///
+  /// In es, this message translates to:
+  /// **'Normal'**
+  String get accentNormal;
+
+  /// No description provided for @accentSilent.
+  ///
+  /// In es, this message translates to:
+  /// **'Mudo'**
+  String get accentSilent;
+
+  /// No description provided for @accentBeat.
+  ///
+  /// In es, this message translates to:
+  /// **'Pulso {beat}: {level}'**
+  String accentBeat(int beat, String level);
+
+  /// No description provided for @accentsHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.'**
+  String get accentsHelp;
 }
 
 class _AppLocalizationsDelegate

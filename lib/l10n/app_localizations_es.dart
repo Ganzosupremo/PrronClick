@@ -617,4 +617,25 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bridge => 'Puente';
+
+  @override
+  String get accentStrong => 'Fuerte';
+
+  @override
+  String get accentMedium => 'Medio';
+
+  @override
+  String get accentNormal => 'Normal';
+
+  @override
+  String get accentSilent => 'Mudo';
+
+  @override
+  String accentBeat(int beat, String level) {
+    return 'Pulso $beat: $level';
+  }
+
+  @override
+  String get accentsHelp =>
+      'Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.';
 }

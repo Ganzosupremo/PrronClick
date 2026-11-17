@@ -124,6 +124,41 @@ int main() {
     r.beatsPerBar = 3;
     CHECK(!isSubAccent(r, 5));
   }
+  {  // Own accents: per beat in bars of their length; never in the count-in.
+    Rules r;
+    r.beatsPerBar = 4;
+    r.accentCount = 4;
+    r.accentBits = kNormal | kStrong << 2 | kMedium << 4 | kSilent << 6;
+    CHECK(accentLevel(r, 0) == kNormal);
+    CHECK(accentLevel(r, 1) == kStrong);
+    CHECK(accentLevel(r, 2) == kMedium);
+    CHECK(accentLevel(r, 3) == kSilent);
+    CHECK(accentLevel(r, 7) == kSilent);  // next bar, same pattern
+    CHECK(isSilent(r, 3) && !isSilent(r, 2));
+    {  // A silent beat takes its subdivisions with it.
+      Rules s = r;
+      s.subdivision = 2;
+      const double step = 1.0 / 4800;
+      std::vector<double> at;
+      for (double b = 0, prev = -step; b < 4; prev = b, b += step) {
+        if ((crosses(s, prev, b) || crossesDivision(s, prev, b)) &&
+            !isSilent(s, std::floor(clickCoord(s, b))))
+          at.push_back(b);
+      }
+      CHECK(at.size() == 6);  // beats 0, 1, 2 and their halves; none from 3
+      CHECK(!at.empty() && near(at.back(), 2.5));
+    }
+    r.countUntil = 4;  // first bar is the count-in: plain
+    CHECK(accentLevel(r, 0) == kStrong && accentLevel(r, 3) == kNormal);
+    CHECK(accentLevel(r, 5) == kStrong);
+    r.countUntil = 0;
+    r.beatsPerBar = 3;  // a bar of another length: automatic again
+    CHECK(accentLevel(r, 0) == kStrong && accentLevel(r, 1) == kNormal);
+    r.beatsPerBar = 6;
+    r.beatUnit = 8;
+    r.accentCount = 0;
+    CHECK(accentLevel(r, 3) == kMedium);
+  }
   {  // Triplet subdivision: two extra clicks inside each beat, none on it.
     Rules r;
     r.subdivision = 3;

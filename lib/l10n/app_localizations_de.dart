@@ -618,4 +618,25 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bridge => 'Bridge';
+
+  @override
+  String get accentStrong => 'Stark';
+
+  @override
+  String get accentMedium => 'Mittel';
+
+  @override
+  String get accentNormal => 'Normal';
+
+  @override
+  String get accentSilent => 'Stumm';
+
+  @override
+  String accentBeat(int beat, String level) {
+    return 'Schlag $beat: $level';
+  }
+
+  @override
+  String get accentsHelp =>
+      'Tippe auf einen Schlag, um seine Betonung zu ändern: normal, stark, mittel oder stumm. Auch auf dem Metronom.';
 }

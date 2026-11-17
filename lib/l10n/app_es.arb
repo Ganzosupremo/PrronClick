@@ -199,5 +199,12 @@
 
   "chorus": "Coro",
   "verse": "Verso",
-  "bridge": "Puente"
+  "bridge": "Puente",
+  "accentStrong": "Fuerte",
+  "accentMedium": "Medio",
+  "accentNormal": "Normal",
+  "accentSilent": "Mudo",
+  "accentBeat": "Pulso {beat}: {level}",
+  "accentsHelp": "Toca un pulso para cambiar su acento: normal, fuerte, medio o mudo. También en el metrónomo.",
+  "@accentBeat": {"placeholders": {"beat": {"type": "int"}, "level": {"type": "String"}}}
 }
