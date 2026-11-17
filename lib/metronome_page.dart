@@ -3,7 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
-import 'library.dart';
+import 'l10n/app_localizations.dart';
 import 'lyrics_view.dart';
 import 'meter_picker.dart';
 import 'song.dart';
@@ -89,6 +89,7 @@ class _MetronomePageState extends State<MetronomePage>
   }
 
   Widget _build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final canControl = state.canControl;
     final info = state.showInfo;
@@ -103,8 +104,10 @@ class _MetronomePageState extends State<MetronomePage>
     String? comingUp;
     if (sectionChange != null && sectionChange > beat) {
       final bars = ((sectionChange - beat) / beatsPerBar).ceil();
-      final when = bars <= 1 ? 'en el próximo compás' : 'en $bars compases';
-      comingUp = 'Sigue: ${info.nextSection} $when';
+      comingUp = t.comingUpSection(
+        info.nextSection ?? '',
+        t.inBars(bars.clamp(1, 9999)),
+      );
     }
     final currentBeat = playing && beat >= 0
         ? (beat - origin).floor() % beatsPerBar
@@ -145,9 +148,9 @@ class _MetronomePageState extends State<MetronomePage>
             child: Chip(
               avatar: const Icon(Icons.link, size: 18),
               label: Text(switch (state.shareMode) {
-                ShareMode.leader => 'Líder · $peers conectado(s)',
+                ShareMode.leader => t.leaderPeers(peers),
                 ShareMode.follower =>
-                  peers == 0 ? 'Buscando líder…' : 'Siguiendo al líder',
+                  peers == 0 ? t.searchingLeader : t.followingLeader,
                 ShareMode.solo => '',
               }),
             ),
@@ -207,10 +210,10 @@ class _MetronomePageState extends State<MetronomePage>
           child: muted || paused || counting
               ? Text(
                   paused
-                      ? 'Pausa'
+                      ? t.statusPause
                       : counting
-                      ? 'Cuenta de entrada'
-                      : 'Silencio',
+                      ? t.countIn
+                      : t.statusSilence,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: scheme.outline),
                 )
@@ -221,7 +224,7 @@ class _MetronomePageState extends State<MetronomePage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton.filledTonal(
-              tooltip: 'Bajar tempo',
+              tooltip: t.tempoDown,
               onPressed: canControl ? () => setTempo(tempo - 1) : null,
               icon: const Icon(Icons.remove),
             ),
@@ -234,7 +237,7 @@ class _MetronomePageState extends State<MetronomePage>
               ),
             ),
             IconButton.filledTonal(
-              tooltip: 'Subir tempo',
+              tooltip: t.tempoUp,
               onPressed: canControl ? () => setTempo(tempo + 1) : null,
               icon: const Icon(Icons.add),
             ),
@@ -252,7 +255,7 @@ class _MetronomePageState extends State<MetronomePage>
           child: OutlinedButton.icon(
             onPressed: canControl ? _tap : null,
             icon: const Icon(Icons.touch_app_outlined),
-            label: const Text('Tap tempo'),
+            label: Text(t.tapTempo),
           ),
         ),
         const SizedBox(height: 16),
@@ -260,7 +263,7 @@ class _MetronomePageState extends State<MetronomePage>
           child: FloatingActionButton.large(
             heroTag:
                 null, // every tab has a FAB in the same route: no shared tag
-            tooltip: playing ? 'Parar' : 'Empezar',
+            tooltip: playing ? t.stop : t.start,
             onPressed: canControl
                 ? () => state.engine.setPlaying(!playing)
                 : null,
@@ -270,7 +273,7 @@ class _MetronomePageState extends State<MetronomePage>
         const SizedBox(height: 24),
         Row(
           children: [
-            const Expanded(child: Text('Compás')),
+            Expanded(child: Text(t.meter)),
             OutlinedButton(
               onPressed: canControl
                   ? () => _pickMeter(shownBeats, info.beatUnit)
@@ -285,7 +288,7 @@ class _MetronomePageState extends State<MetronomePage>
           Card.outlined(
             child: ExpansionTile(
               leading: const Icon(Icons.lyrics_outlined),
-              title: const Text('Letra'),
+              title: Text(t.lyrics),
               shape: const Border(),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
@@ -328,13 +331,13 @@ class _SetlistBar extends StatelessWidget {
     final info = state.showInfo;
     final change = info.changeBeat;
     final next = info.next;
+    final t = AppLocalizations.of(context);
     final String status;
     if (change != null && change > beat) {
-      final bars = ((change - beat) / beatsPerBar).ceil();
-      final when = bars <= 1 ? 'en el próximo compás' : 'en $bars compases';
-      status = next == null ? 'Termina $when' : 'Sigue "$next" $when';
+      final when = t.inBars(((change - beat) / beatsPerBar).ceil());
+      status = next == null ? t.setlistEnds(when) : t.setlistNextIn(next, when);
     } else {
-      status = next == null ? 'Última canción' : 'Siguiente: $next';
+      status = next == null ? t.lastSong : t.nextSong(next);
     }
     final i = state.setlistIndex;
     final small = Theme.of(context).textTheme.bodySmall;
@@ -366,17 +369,17 @@ class _SetlistBar extends StatelessWidget {
             // Only whoever runs the setlist moves through it.
             if (state.canControl) ...[
               IconButton(
-                tooltip: 'Canción anterior',
+                tooltip: t.previousSongTooltip,
                 onPressed: i > 0 ? () => state.goToSong(i - 1) : null,
                 icon: const Icon(Icons.skip_previous),
               ),
               IconButton(
-                tooltip: 'Canción siguiente',
+                tooltip: t.nextSongTooltip,
                 onPressed: next != null ? () => state.goToSong(i + 1) : null,
                 icon: const Icon(Icons.skip_next),
               ),
               IconButton(
-                tooltip: 'Salir del setlist',
+                tooltip: t.leaveSetlist,
                 onPressed: state.stopSetlist,
                 icon: const Icon(Icons.close),
               ),
@@ -396,44 +399,54 @@ class _ToolsPanel extends StatelessWidget {
 
   static const _steps = ['1', 'e', '&', 'a'];
 
+  // A long word ("Mitspieler") shrinks a little instead of breaking.
+  static Widget _oneLine(String text) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Card.outlined(
       child: ExpansionTile(
         leading: const Icon(Icons.handyman_outlined),
-        title: const Text('Herramientas'),
+        title: Text(t.tools),
         shape: const Border(),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Compartir click'),
+          Text(t.shareClick),
           const SizedBox(height: 8),
           SegmentedButton<ShareMode>(
             showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: ShareMode.solo, label: Text('Solo')),
-              ButtonSegment(value: ShareMode.leader, label: Text('Líder')),
-              ButtonSegment(value: ShareMode.follower, label: Text('Seguidor')),
+            segments: [
+              ButtonSegment(value: ShareMode.solo, label: _oneLine(t.modeSolo)),
+              ButtonSegment(
+                value: ShareMode.leader,
+                label: _oneLine(t.modeLeader),
+              ),
+              ButtonSegment(
+                value: ShareMode.follower,
+                label: _oneLine(t.modeFollower),
+              ),
             ],
             selected: {state.shareMode},
             onSelectionChanged: (s) => state.setShareMode(s.first),
           ),
           const Divider(height: 32),
-          const Text('Mi click'),
-          Text(
-            'Solo en este dispositivo: cada músico pone el suyo.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(t.myClick),
+          Text(t.myClickHelp, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
-          const Text('Subdivisión'),
+          Text(t.subdivision),
           const SizedBox(height: 8),
           SegmentedButton<int>(
             showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: 1, label: Text('No')),
-              ButtonSegment(value: 2, label: Text('2')),
-              ButtonSegment(value: 3, label: Text('3')),
-              ButtonSegment(value: 4, label: Text('4')),
+            segments: [
+              ButtonSegment(value: 1, label: Text(t.no)),
+              const ButtonSegment(value: 2, label: Text('2')),
+              const ButtonSegment(value: 3, label: Text('3')),
+              const ButtonSegment(value: 4, label: Text('4')),
             ],
             selected: {state.library.subdivision},
             onSelectionChanged: (s) => state.setClick(subdivision: s.first),
@@ -441,7 +454,7 @@ class _ToolsPanel extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Text('Volumen'),
+              Text(t.volume),
               Expanded(
                 child: Slider(
                   value: state.library.volume,
@@ -453,11 +466,16 @@ class _ToolsPanel extends StatelessWidget {
           ),
           Row(
             children: [
-              const Expanded(child: Text('Sonido')),
+              Expanded(child: Text(t.sound)),
               DropdownButton<int>(
                 value: state.library.sound,
                 items: [
-                  for (final (i, name) in clickSounds.indexed)
+                  // In the engine's order (see clickWave in engine.cpp).
+                  for (final (i, name) in [
+                    t.soundBeep,
+                    t.soundWood,
+                    t.soundDigital,
+                  ].indexed)
                     DropdownMenuItem(value: i, child: Text(name)),
                 ],
                 onChanged: (n) => state.setClick(sound: n),
@@ -468,66 +486,58 @@ class _ToolsPanel extends StatelessWidget {
             const Divider(height: 32),
             Row(
               children: [
-                const Expanded(child: Text('Click desplazado')),
+                Expanded(child: Text(t.displacedClick)),
                 if (state.displaceBars > 0)
-                  Text('Ahora en: ${_steps[(bar ~/ state.displaceBars) % 4]}'),
+                  Text(t.displacedNow(_steps[(bar ~/ state.displaceBars) % 4])),
               ],
             ),
             const SizedBox(height: 8),
             SegmentedButton<int>(
               showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 0, label: Text('No')),
-                ButtonSegment(value: 2, label: Text('Cada 2')),
-                ButtonSegment(value: 3, label: Text('Cada 3')),
+              segments: [
+                ButtonSegment(value: 0, label: Text(t.no)),
+                ButtonSegment(value: 2, label: Text(t.everyBars(2))),
+                ButtonSegment(value: 3, label: Text(t.everyBars(3))),
               ],
               selected: {state.displaceBars},
               onSelectionChanged: (s) => state.setDisplacement(s.first),
             ),
-            Text(
-              'Se mueve una semicorchea cada 2 o 3 compases: 1, e, &, a.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(t.displacedHelp, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 16),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Entrenador de tempo'),
-              subtitle: const Text(
-                'El click suena unos compases y luego se calla.',
-              ),
+              title: Text(t.gapTrainer),
+              subtitle: Text(t.gapTrainerHelp),
               value: state.gapTrainer,
               onChanged: (v) => state.setGapTrainer(enabled: v),
             ),
             if (state.gapTrainer) ...[
               _BarsRow(
-                label: 'Compases con click',
+                label: t.barsWithClick,
                 value: state.gapPlay,
                 onChanged: (n) => state.setGapTrainer(play: n),
               ),
               _BarsRow(
-                label: 'Compases en silencio',
+                label: t.barsSilent,
                 value: state.gapMute,
                 onChanged: (n) => state.setGapTrainer(mute: n),
               ),
             ],
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Rampa de tempo'),
-              subtitle: const Text(
-                'El tempo sube cada pocos compases. Al parar vuelve al '
-                'inicial.',
-              ),
+              title: Text(t.tempoRamp),
+              subtitle: Text(t.tempoRampHelp),
               value: state.library.ramp,
               onChanged: (v) => state.setRamp(enabled: v),
             ),
             if (state.library.ramp) ...[
               _BarsRow(
-                label: 'Subir (BPM)',
+                label: t.rampUpBpm,
                 value: state.library.rampBpm,
                 onChanged: (n) => state.setRamp(bpm: n),
               ),
               _BarsRow(
-                label: 'Cada (compases)',
+                label: t.rampEveryBars,
                 value: state.library.rampBars,
                 onChanged: (n) => state.setRamp(bars: n),
               ),

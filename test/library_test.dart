@@ -21,7 +21,19 @@ void main() {
     expect((lib.subdivision, lib.volume, lib.sound), (1, 1, 0));
     expect((lib.flash, lib.flashCountIn, lib.ramp), (false, false, false));
     expect(lib.extraLatencyMs, 0);
+    expect(lib.language, ''); // the phone's
   });
+
+  test(
+    'the language is kept; one we do not have falls back to the phone',
+    () async {
+      await store.save(Library(language: 'de'));
+      expect((await store.load()).language, 'de');
+      await File('${dir.path}/library.json')
+          .writeAsString('{"settings": {"language": "fr"}}');
+      expect((await store.load()).language, '');
+    },
+  );
 
   test('save then load round-trips, overwriting the previous file', () async {
     await store.save(Library(extraLatencyMs: 10));

@@ -5,8 +5,11 @@ import 'dart:io';
 import 'setlist.dart';
 import 'song.dart';
 
-/// The engine's click timbres, by index (see clickWave in native/engine.cpp).
-const clickSounds = ['Pitido', 'Madera', 'Digital'];
+/// How many click timbres the engine has (see clickWave in native/engine.cpp).
+const clickSoundCount = 3;
+
+/// The app's languages; '' = the phone's.
+const languages = ['es', 'en', 'de'];
 
 /// Everything the app saves: settings, songs and setlists.
 class Library {
@@ -27,6 +30,7 @@ class Library {
     this.rampBpm = 5,
     this.rampBars = 4,
     this.sessionCode = '',
+    this.language = '',
     List<Song>? songs,
     List<Setlist>? setlists,
   }) : songs = songs ?? [],
@@ -58,7 +62,7 @@ class Library {
         _ => 1,
       },
       sound: switch (settings['sound']) {
-        final int n when n >= 0 && n < clickSounds.length => n,
+        final int n when n >= 0 && n < clickSoundCount => n,
         _ => 0,
       },
       flash: settings['flash'] == true,
@@ -68,6 +72,10 @@ class Library {
       rampBars: bars(settings['rampBars'], 4),
       sessionCode: switch (settings['sessionCode']) {
         final String s when s.length <= 40 => s.trim(),
+        _ => '',
+      },
+      language: switch (settings['language']) {
+        final String code when languages.contains(code) => code,
         _ => '',
       },
       songs: [
@@ -91,7 +99,7 @@ class Library {
   // This device's click (not shared with the band).
   int subdivision; // clicks per beat, 1 = none
   double volume; // 0..1
-  int sound; // index into clickSounds
+  int sound; // index into the engine's timbres
 
   bool flash; // the screen flashes on each beat
   bool flashCountIn; // ...and during the count-in
@@ -104,6 +112,9 @@ class Library {
   /// Only devices with the same code share a click. Empty = standard Link,
   /// which Ableton Live and other Link apps also join.
   String sessionCode;
+
+  /// '' = the phone's language, else one of [languages].
+  String language;
   final List<Song> songs;
   final List<Setlist> setlists;
 
@@ -177,6 +188,7 @@ class Library {
       'rampBpm': rampBpm,
       'rampBars': rampBars,
       'sessionCode': sessionCode,
+      'language': language,
     },
     'songs': [for (final s in songs) s.toJson()],
     'setlists': [for (final s in setlists) s.toJson()],

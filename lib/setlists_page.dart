@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'l10n/app_localizations.dart';
 import 'setlist.dart';
 import 'song.dart';
 import 'transfer.dart';
@@ -15,7 +16,10 @@ class SetlistsPage extends StatelessWidget {
   final VoidCallback onStarted;
 
   Future<void> _create(BuildContext context) async {
-    final name = await askName(context, title: 'Nuevo setlist');
+    final name = await askName(
+      context,
+      title: AppLocalizations.of(context).newSetlist,
+    );
     if (name == null || !context.mounted) return;
     final setlist = Setlist(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -36,10 +40,11 @@ class SetlistsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         heroTag: null,
-        tooltip: 'Nuevo setlist',
+        tooltip: t.newSetlist,
         onPressed: () => _create(context),
         child: const Icon(Icons.add),
       ),
@@ -52,8 +57,7 @@ class SetlistsPage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  'Aún no hay setlists. Toca + para crear uno y añadirle '
-                  'canciones.',
+                  t.noSetlists,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.outline,
@@ -68,7 +72,7 @@ class SetlistsPage extends StatelessWidget {
               for (final s in setlists)
                 ListTile(
                   title: Text(s.name),
-                  subtitle: Text(_summary(s.songsFrom(state.library.songs))),
+                  subtitle: Text(_summary(t, s.songsFrom(state.library.songs))),
                   selected: s == state.activeSetlist,
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _open(context, s),
@@ -80,11 +84,10 @@ class SetlistsPage extends StatelessWidget {
     );
   }
 
-  static String _summary(List<Song> songs) {
-    final n = songs.length;
-    final secs = songs.fold(0, (t, s) => t + (s.lengthSeconds ?? 0));
+  static String _summary(AppLocalizations t, List<Song> songs) {
+    final secs = songs.fold(0, (sum, s) => sum + (s.lengthSeconds ?? 0));
     return [
-      n == 1 ? '1 canción' : '$n canciones',
+      t.songCount(songs.length),
       if (secs > 0) formatDuration(secs),
     ].join(' · ');
   }
@@ -95,10 +98,14 @@ Future<String?> askName(
   BuildContext context, {
   required String title,
   String initial = '',
-  String label = 'Nombre',
+  String? label, // default: "Name"
 }) => showDialog<String>(
   context: context,
-  builder: (_) => _NameDialog(title: title, initial: initial, label: label),
+  builder: (_) => _NameDialog(
+    title: title,
+    initial: initial,
+    label: label ?? AppLocalizations.of(context).name,
+  ),
 );
 
 // Owns its controller: the TextField still uses it while the dialog animates
@@ -146,9 +153,12 @@ class _NameDialogState extends State<_NameDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
-        TextButton(onPressed: submit, child: const Text('Guardar')),
+        TextButton(
+          onPressed: submit,
+          child: Text(AppLocalizations.of(context).save),
+        ),
       ],
     );
   }
@@ -170,9 +180,7 @@ class SetlistPage extends StatelessWidget {
   void _start(BuildContext context, int index) {
     if (!state.canControl) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Como seguidor, el tempo lo pone el líder.'),
-        ),
+        SnackBar(content: Text(AppLocalizations.of(context).followerNoTempo)),
       );
       return;
     }
@@ -184,7 +192,7 @@ class SetlistPage extends StatelessWidget {
   Future<void> _rename(BuildContext context) async {
     final name = await askName(
       context,
-      title: 'Renombrar setlist',
+      title: AppLocalizations.of(context).renameSetlist,
       initial: setlist.name,
     );
     if (name == null) return;
@@ -193,19 +201,20 @@ class SetlistPage extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('¿Borrar "${setlist.name}"?'),
-        content: const Text('Las canciones no se borran.'),
+        title: Text(t.deleteQuestion(setlist.name)),
+        content: Text(t.setlistDeleteKeepsSongs),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(t.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Borrar'),
+            child: Text(t.delete),
           ),
         ],
       ),
@@ -219,7 +228,7 @@ class SetlistPage extends StatelessWidget {
     final songs = state.library.songs;
     if (songs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero crea canciones en Canciones.')),
+        SnackBar(content: Text(AppLocalizations.of(context).createSongsFirst)),
       );
       return;
     }
@@ -243,6 +252,7 @@ class SetlistPage extends StatelessWidget {
     return ListenableBuilder(
       listenable: state,
       builder: (context, _) {
+        final t = AppLocalizations.of(context);
         // Ids of deleted songs are already removed, so positions match.
         final songs = setlist.songsFrom(state.library.songs);
         return Scaffold(
@@ -250,17 +260,17 @@ class SetlistPage extends StatelessWidget {
             title: Text(setlist.name),
             actions: [
               IconButton(
-                tooltip: 'Exportar setlist',
+                tooltip: t.exportSetlist,
                 icon: const Icon(Icons.ios_share),
                 onPressed: () => exportSetlist(context, state, setlist),
               ),
               IconButton(
-                tooltip: 'Renombrar',
+                tooltip: t.rename,
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () => _rename(context),
               ),
               IconButton(
-                tooltip: 'Borrar setlist',
+                tooltip: t.deleteSetlist,
                 icon: const Icon(Icons.delete_outline),
                 onPressed: () => _delete(context),
               ),
@@ -270,17 +280,14 @@ class SetlistPage extends StatelessWidget {
             heroTag: null,
             onPressed: songs.isEmpty ? null : () => _start(context, 0),
             icon: const Icon(Icons.play_arrow),
-            label: const Text('Empezar'),
+            label: Text(t.start),
           ),
           body: ListView(
             padding: const EdgeInsets.only(bottom: 88),
             children: [
               SwitchListTile(
-                title: const Text('Pasar a la siguiente automáticamente'),
-                subtitle: const Text(
-                  'Al acabar la duración de una canción empieza la siguiente '
-                  'en el compás exacto. Al final del setlist, se para.',
-                ),
+                title: Text(t.autoAdvance),
+                subtitle: Text(t.autoAdvanceHelp),
                 value: setlist.autoAdvance,
                 onChanged: (v) {
                   setlist.autoAdvance = v;
@@ -289,22 +296,15 @@ class SetlistPage extends StatelessWidget {
               ),
               ListTile(
                 enabled: setlist.autoAdvance,
-                title: const Text('Pausa entre canciones'),
-                subtitle: const Text(
-                  'Compases en silencio, al tempo de la siguiente, antes de '
-                  'que empiece.',
-                ),
+                title: Text(t.pauseBetween),
+                subtitle: Text(t.pauseBetweenHelp),
                 trailing: DropdownButton<int>(
                   value: setlist.pauseBars,
                   items: [
                     for (final n in const [0, 1, 2, 4, 8])
                       DropdownMenuItem(
                         value: n,
-                        child: Text(switch (n) {
-                          0 => 'No',
-                          1 => '1 compás',
-                          _ => '$n compases',
-                        }),
+                        child: Text(n == 0 ? t.no : t.bars(n)),
                       ),
                   ],
                   onChanged: setlist.autoAdvance
@@ -316,25 +316,21 @@ class SetlistPage extends StatelessWidget {
                 ),
               ),
               ListTile(
-                title: const Text('Cuenta de entrada'),
-                subtitle: const Text(
-                  'Compases de click en otro tono antes de cada canción, '
-                  'después de la pausa.',
-                ),
+                title: Text(t.countIn),
+                subtitle: Text(t.setlistCountInHelp),
                 trailing: DropdownButton<int>(
                   // -1 = no own value: follow the app setting.
                   value: setlist.countInBars ?? -1,
                   items: [
                     DropdownMenuItem(
                       value: -1,
-                      child: Text(switch (state.library.countInBars) {
-                        0 => 'Ajustes (no)',
-                        final n => 'Ajustes ($n)',
-                      }),
+                      child: Text(
+                        t.countInFromSettings(state.library.countInBars),
+                      ),
                     ),
-                    const DropdownMenuItem(value: 0, child: Text('No')),
-                    const DropdownMenuItem(value: 1, child: Text('1 compás')),
-                    const DropdownMenuItem(value: 2, child: Text('2 compases')),
+                    DropdownMenuItem(value: 0, child: Text(t.no)),
+                    DropdownMenuItem(value: 1, child: Text(t.bars(1))),
+                    DropdownMenuItem(value: 2, child: Text(t.bars(2))),
                   ],
                   onChanged: (n) {
                     setlist.countInBars = n == -1 ? null : n;
@@ -359,12 +355,12 @@ class SetlistPage extends StatelessWidget {
                       title: Text('${i + 1}. ${song.name}'),
                       subtitle: Text(
                         song.lengthSeconds == null && setlist.autoAdvance
-                            ? '${song.summary} · sin duración: pasa a mano'
+                            ? t.noDurationManual(song.summary)
                             : song.summary,
                       ),
                       onTap: () => _start(context, i),
                       trailing: IconButton(
-                        tooltip: 'Quitar del setlist',
+                        tooltip: t.removeFromSetlist,
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: () {
                           setlist.songIds.removeAt(i);
@@ -379,7 +375,7 @@ class SetlistPage extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => _addSongs(context),
                   icon: const Icon(Icons.playlist_add),
-                  label: const Text('Añadir canciones'),
+                  label: Text(t.addSongs),
                 ),
               ),
             ],
@@ -405,8 +401,9 @@ class _SongPickerState extends State<_SongPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Añadir canciones'),
+      title: Text(t.addSongs),
       contentPadding: const EdgeInsets.symmetric(vertical: 8),
       content: SizedBox(
         width: double.maxFinite,
@@ -428,11 +425,11 @@ class _SongPickerState extends State<_SongPicker> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
+          child: Text(t.cancel),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, picked),
-          child: Text(picked.isEmpty ? 'Añadir' : 'Añadir (${picked.length})'),
+          child: Text(picked.isEmpty ? t.add : t.addCount(picked.length)),
         ),
       ],
     );

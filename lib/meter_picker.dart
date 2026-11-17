@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 
+import 'l10n/app_localizations.dart';
 import 'song.dart';
 
 /// Lets the user scroll to any meter; returns (beats, unit), or null if
@@ -92,13 +93,14 @@ class _MeterSheetState extends State<_MeterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Compás', style: Theme.of(context).textTheme.titleMedium),
+            Text(t.meter, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             // The wheels also follow a mouse drag (desktop).
             ScrollConfiguration(
@@ -109,7 +111,7 @@ class _MeterSheetState extends State<_MeterSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _wheel('Pulsos por compás', _beats, _beatsWheel, (v) {
+                  _wheel(t.beatsPerBar, _beats, _beatsWheel, (v) {
                     beats = v;
                   }),
                   Padding(
@@ -119,7 +121,7 @@ class _MeterSheetState extends State<_MeterSheet> {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
-                  _wheel('Figura del pulso', beatUnits, _unitWheel, (v) {
+                  _wheel(t.beatUnit, beatUnits, _unitWheel, (v) {
                     unit = v;
                   }),
                 ],
@@ -127,15 +129,14 @@ class _MeterSheetState extends State<_MeterSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'El click suena una vez por pulso y el tempo cuenta esos '
-              'pulsos: en 6/8 a 180 BPM suenan 180 corcheas por minuto.',
+              t.meterHelp,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => Navigator.pop(context, (beats, unit)),
-              child: Text('Usar $beats/$unit'),
+              child: Text(t.useMeter('$beats/$unit')),
             ),
           ],
         ),

@@ -1,9 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:prronclick/l10n/app_localizations.dart';
 import 'package:prronclick/lyrics_view.dart';
 import 'package:prronclick/song.dart';
 import 'package:prronclick/songs_page.dart';
+
+/// The app's texts in Spanish, which these tests look for.
+Widget app(Widget home, {Locale locale = const Locale('es')}) => MaterialApp(
+  locale: locale,
+  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    ...GlobalMaterialLocalizations.delegates,
+  ],
+  home: home,
+);
 
 void main() {
   testWidgets('song editor: scroll the meter wheels, fill the new fields', (
@@ -11,8 +23,8 @@ void main() {
   ) async {
     Song? saved;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      app(
+        Builder(
           builder: (context) => TextButton(
             onPressed: () async => saved = await Navigator.of(
               context,
@@ -76,8 +88,8 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      app(
+        const Scaffold(
           body: LyricsView(
             text:
                 '{comment: Entra la batería}\n{soc}\n[Am]Hola [E7]mundo\n'
@@ -103,5 +115,22 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('{', findRichText: true), findsNothing);
+  });
+
+  testWidgets('English and German texts', (tester) async {
+    for (final (code, chorus, add) in [
+      ('en', 'Chorus', 'Add'),
+      ('de', 'Refrain', 'Hinzufügen'),
+    ]) {
+      await tester.pumpWidget(
+        app(
+          const Scaffold(body: LyricsView(text: '{soc}\nla')),
+          locale: Locale(code),
+        ),
+      );
+      expect(find.text(chorus), findsOneWidget);
+      await tester.pumpWidget(app(const SongEditor(), locale: Locale(code)));
+      expect(find.text(add), findsOneWidget);
+    }
   });
 }

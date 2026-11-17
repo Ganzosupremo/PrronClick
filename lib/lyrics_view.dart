@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'chordpro.dart';
+import 'l10n/app_localizations.dart';
 
 /// Shows a song's ChordPro body: lyrics with their chords above them, comments
 /// and section names set apart. Other directives are not shown.
@@ -30,14 +31,13 @@ class _LyricsViewState extends State<LyricsView> {
     _lines = null; // theme colours may have changed
   }
 
-  static const _sections = {
-    'start_of_chorus': 'Coro',
-    'soc': 'Coro',
-    'start_of_verse': 'Verso',
-    'sov': 'Verso',
-    'start_of_bridge': 'Puente',
-    'sob': 'Puente',
-  };
+  static String? _section(AppLocalizations t, String directive) =>
+      switch (directive) {
+        'start_of_chorus' || 'soc' => t.chorus,
+        'start_of_verse' || 'sov' => t.verse,
+        'start_of_bridge' || 'sob' => t.bridge,
+        _ => null,
+      };
   static const _comments = {'comment', 'c', 'comment_italic', 'ci', 'cb'};
   // Inside a line of lyrics: a [chord], or a comment written after the words
   // (ChordPro wants directives on their own line, people do not).
@@ -137,6 +137,7 @@ class _LyricsViewState extends State<LyricsView> {
   }
 
   List<Widget> _build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final plain = theme.textTheme.bodyLarge!;
@@ -171,7 +172,7 @@ class _LyricsViewState extends State<LyricsView> {
             ),
           ),
         );
-      } else if (_sections[name] case final section?) {
+      } else if (_section(t, name) case final section?) {
         out.add(
           Padding(
             padding: const EdgeInsets.only(top: 4),

@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
 import 'chordpro.dart';
+import 'l10n/app_localizations.dart';
 import 'setlist.dart';
 
 const _maxBytes = 1 << 20; // nobody's lyrics are over 1 MB
@@ -22,9 +23,10 @@ String _baseName(String file) => file.replaceFirst(RegExp(r'\.[^.]+$'), '');
 
 Future<void> importSongs(BuildContext context, AppState state) async {
   final say = _sayOn(context);
+  final t = AppLocalizations.of(context);
   try {
     // Any type: Android has no file type for .cho and would grey them out.
-    final files = await FilePicker.pickFiles(dialogTitle: 'Importar canciones');
+    final files = await FilePicker.pickFiles(dialogTitle: t.importSongs);
     var count = 0, skipped = 0;
     for (final file in files) {
       final bytes = await file.readAsBytes();
@@ -39,13 +41,13 @@ Future<void> importSongs(BuildContext context, AppState state) async {
     if (files.isEmpty) return;
     say(
       [
-        count == 1 ? '1 canción importada.' : '$count canciones importadas.',
-        if (skipped > 0) '$skipped archivo(s) sin canciones.',
+        t.songsImported(count),
+        if (skipped > 0) t.filesWithoutSongs(skipped),
       ].join(' '),
     );
   } on Exception catch (e) {
     debugPrint('import songs: $e');
-    say('No se pudo leer el archivo.');
+    say(t.cannotRead);
   }
 }
 
@@ -56,27 +58,32 @@ Future<void> _save(
   String mimeType = 'application/octet-stream',
 }) async {
   final say = _sayOn(context);
+  final t = AppLocalizations.of(context);
   try {
     final saved = await FilePicker.saveFile(
       fileName: fileName,
       bytes: utf8.encode(text),
       mimeType: mimeType,
     );
-    if (saved != null) say('Guardado: $fileName');
+    if (saved != null) say(t.savedFile(fileName));
   } on Exception catch (e) {
     debugPrint('export: $e');
-    say('No se pudo guardar el archivo.');
+    say(t.cannotSave);
   }
 }
 
 /// All songs in one ChordPro file.
-Future<void> exportSongs(BuildContext context, AppState state) =>
-    _save(context, 'canciones.cho', toChordPro(state.library.songs));
+Future<void> exportSongs(BuildContext context, AppState state) => _save(
+  context,
+  '${AppLocalizations.of(context).songsFileName}.cho',
+  toChordPro(state.library.songs),
+);
 
 Future<void> importSetlist(BuildContext context, AppState state) async {
   final say = _sayOn(context);
+  final t = AppLocalizations.of(context);
   try {
-    final file = await FilePicker.pickFile(dialogTitle: 'Importar setlist');
+    final file = await FilePicker.pickFile(dialogTitle: t.importSetlist);
     if (file == null) return;
     final bytes = await file.readAsBytes();
     Setlist? setlist;
@@ -87,14 +94,10 @@ Future<void> importSetlist(BuildContext context, AppState state) async {
         // not JSON: reported below
       }
     }
-    say(
-      setlist == null
-          ? 'Ese archivo no es un setlist de PrronClick.'
-          : 'Setlist "${setlist.name}" importado.',
-    );
+    say(setlist == null ? t.notASetlist : t.setlistImported(setlist.name));
   } on Exception catch (e) {
     debugPrint('import setlist: $e');
-    say('No se pudo leer el archivo.');
+    say(t.cannotRead);
   }
 }
 

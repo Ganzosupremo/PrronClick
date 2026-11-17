@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_channel">Metronom aktiv</string>
+    <string name="playback_running">Das Metronom läuft weiter</string>
+    <string name="playback_stop">Stopp</string>
+</resources>

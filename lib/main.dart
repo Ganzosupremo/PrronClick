@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'l10n/app_localizations.dart';
 import 'metronome_page.dart';
 import 'setlists_page.dart';
 import 'settings_page.dart';
@@ -18,21 +19,45 @@ class PrronClickApp extends StatelessWidget {
 
   final AppState state;
 
+  static final _light = ThemeData(colorSchemeSeed: Colors.deepOrange);
+  static final _dark = ThemeData(
+    colorSchemeSeed: Colors.deepOrange,
+    brightness: Brightness.dark,
+  );
+
+  /// English first: it is what a phone in any other language gets.
+  static const languages = [Locale('en'), Locale('es'), Locale('de')];
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PrronClick',
-      themeMode: ThemeMode.system,
-      theme: ThemeData(colorSchemeSeed: Colors.deepOrange),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.deepOrange,
-        brightness: Brightness.dark,
+    return ListenableBuilder(
+      listenable: state,
+      builder: (context, _) => MaterialApp(
+        title: 'PrronClick',
+        themeMode: ThemeMode.system,
+        theme: _light,
+        darkTheme: _dark,
+        // null: the phone's language.
+        locale: switch (state.library.language) {
+          '' => null,
+          final code => Locale(code),
+        },
+        supportedLocales: languages,
+        // material_ui's own delegates: Flutter's would not reach its widgets.
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        home: state.audioOk
+            ? HomePage(state: state)
+            : Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: Text(AppLocalizations.of(context).audioFailed),
+                  ),
+                ),
+              ),
       ),
-      home: state.audioOk
-          ? HomePage(state: state)
-          : const Scaffold(
-              body: Center(child: Text('No se pudo abrir la salida de audio.')),
-            ),
     );
   }
 }
@@ -49,34 +74,33 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int tab = 0;
 
-  static const titles = ['Metrónomo', 'Canciones', 'Setlists'];
-
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[tab]),
+        title: Text([t.tabMetronome, t.tabSongs, t.tabSetlists][tab]),
         actions: [
           if (tab == 1)
             PopupMenuButton<bool>(
-              tooltip: 'Importar o exportar',
+              tooltip: t.importExport,
               icon: const Icon(Icons.import_export),
               onSelected: (import) => import
                   ? importSongs(context, widget.state)
                   : exportSongs(context, widget.state),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: true, child: Text('Importar canciones')),
-                PopupMenuItem(value: false, child: Text('Exportar canciones')),
+              itemBuilder: (_) => [
+                PopupMenuItem(value: true, child: Text(t.importSongs)),
+                PopupMenuItem(value: false, child: Text(t.exportSongs)),
               ],
             ),
           if (tab == 2)
             IconButton(
-              tooltip: 'Importar setlist',
+              tooltip: t.importSetlist,
               icon: const Icon(Icons.file_open_outlined),
               onPressed: () => importSetlist(context, widget.state),
             ),
           IconButton(
-            tooltip: 'Ajustes',
+            tooltip: t.settings,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -106,18 +130,18 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: (i) => setState(() => tab = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            label: 'Metrónomo',
+            icon: const Icon(Icons.timer_outlined),
+            label: t.tabMetronome,
           ),
           NavigationDestination(
-            icon: Icon(Icons.library_music_outlined),
-            label: 'Canciones',
+            icon: const Icon(Icons.library_music_outlined),
+            label: t.tabSongs,
           ),
           NavigationDestination(
-            icon: Icon(Icons.queue_music_outlined),
-            label: 'Setlists',
+            icon: const Icon(Icons.queue_music_outlined),
+            label: t.tabSetlists,
           ),
         ],
       ),

@@ -70,7 +70,7 @@ class PlaybackService : Service() {
         )
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL, "Metrónomo activo", NotificationManager.IMPORTANCE_LOW
+                CHANNEL, getString(R.string.playback_channel), NotificationManager.IMPORTANCE_LOW
             )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
             Notification.Builder(this, CHANNEL)
@@ -83,12 +83,12 @@ class PlaybackService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
         val stopAction = Notification.Action.Builder(
-            Icon.createWithResource(this, android.R.drawable.ic_media_pause), "Parar", stop
+            Icon.createWithResource(this, android.R.drawable.ic_media_pause), getString(R.string.playback_stop), stop
         ).build()
         return builder
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle("PrronClick")
-            .setContentText("El metrónomo sigue activo")
+            .setContentText(getString(R.string.playback_running))
             .setContentIntent(open)
             .addAction(stopAction)
             .setVisibility(Notification.VISIBILITY_PUBLIC) // usable from the lock screen

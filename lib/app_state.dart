@@ -15,6 +15,8 @@ import 'song.dart';
 
 enum ShareMode { solo, leader, follower }
 
+enum CalibrationError { notFollowing, noPermission, micFailed, notHeard }
+
 /// App-wide state shared by every tab. The engine's live values (tempo, beat,
 /// peers) are not mirrored here: the metronome page polls them every frame.
 class AppState extends ChangeNotifier {
@@ -546,6 +548,13 @@ class AppState extends ChangeNotifier {
     store.save(library);
   }
 
+  /// '' follows the phone's language.
+  void setLanguage(String code) {
+    library.language = code;
+    notifyListeners();
+    store.save(library);
+  }
+
   void setPracticeTools(bool enabled) {
     library.practiceTools = enabled;
     _practiceChanged();
@@ -565,29 +574,24 @@ class AppState extends ChangeNotifier {
   /// Lines our clicks up with the leader's by ear: records 8 s while the
   /// leader plays, then adds the measured lateness to the latency setting.
   /// Returns how late we were and the correction actually applied (less if
-  /// the setting hit its limit), or an error message.
-  Future<((double, double)?, String?)> calibrate() async {
+  /// the setting hit its limit), or why it could not.
+  Future<((double, double)?, CalibrationError?)> calibrate() async {
     if (shareMode != ShareMode.follower ||
         engine.numPeers() == 0 ||
         !engine.isPlaying()) {
-      return (null, 'Ponte como Seguidor con el líder sonando.');
+      return (null, CalibrationError.notFollowing);
     }
     if ((Platform.isAndroid || Platform.isIOS) &&
         await _mic.invokeMethod<bool>('request') != true) {
-      return (null, 'Hace falta permiso para usar el micrófono.');
+      return (null, CalibrationError.noPermission);
     }
     if (!engine.calibrationStart()) {
-      return (null, 'No se pudo abrir el micrófono.');
+      return (null, CalibrationError.micFailed);
     }
     await Future<void>.delayed(const Duration(seconds: 8));
     final late = engine.calibrationFinish();
     if (late.isNaN) {
-      return (
-        null,
-        'No se oyeron bien los dos clicks. Acerca el dispositivo al líder, '
-            'sube el volumen, deja sonar solo al líder (sin click desplazado) '
-            'y prueba otra vez.',
-      );
+      return (null, CalibrationError.notHeard);
     }
     final before = library.extraLatencyMs;
     setExtraLatency((before + late).clamp(-100, 400));

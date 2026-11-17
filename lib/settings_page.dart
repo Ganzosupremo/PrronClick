@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'l10n/app_localizations.dart';
 import 'setlists_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -9,10 +10,14 @@ class SettingsPage extends StatelessWidget {
 
   final AppState state;
 
+  /// Each language under its own name, so anyone can find theirs.
+  static const _languages = {'es': 'Español', 'en': 'English', 'de': 'Deutsch'};
+
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
+      appBar: AppBar(title: Text(t.settings)),
       body: ListenableBuilder(
         listenable: state,
         builder: (context, _) {
@@ -20,46 +25,48 @@ class SettingsPage extends StatelessWidget {
           final small = Theme.of(context).textTheme.bodySmall;
           return ListView(
             children: [
-              SwitchListTile(
-                title: const Text('Herramientas de práctica'),
-                subtitle: const Text(
-                  'Muestra el click desplazado y el entrenador de tempo en el '
-                  'panel de Herramientas.',
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(t.language),
+                trailing: DropdownButton<String>(
+                  value: lib.language,
+                  items: [
+                    DropdownMenuItem(value: '', child: Text(t.languageSystem)),
+                    for (final MapEntry(:key, :value) in _languages.entries)
+                      DropdownMenuItem(value: key, child: Text(value)),
+                  ],
+                  onChanged: (code) => state.setLanguage(code!),
                 ),
+              ),
+              const Divider(),
+              SwitchListTile(
+                title: Text(t.practiceTools),
+                subtitle: Text(t.practiceToolsHelp),
                 value: lib.practiceTools,
                 onChanged: state.setPracticeTools,
               ),
               ListTile(
-                title: const Text('Cuenta de entrada'),
-                subtitle: const Text(
-                  'Compases de click en otro tono antes de cada canción. Como '
-                  'Seguidor suena la cuenta del líder.',
-                ),
+                title: Text(t.countIn),
+                subtitle: Text(t.countInHelp),
                 trailing: DropdownButton<int>(
                   value: lib.countInBars,
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('No')),
-                    DropdownMenuItem(value: 1, child: Text('1 compás')),
-                    DropdownMenuItem(value: 2, child: Text('2 compases')),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(t.no)),
+                    DropdownMenuItem(value: 1, child: Text(t.bars(1))),
+                    DropdownMenuItem(value: 2, child: Text(t.bars(2))),
                   ],
                   onChanged: (n) => state.setCountIn(n!),
                 ),
               ),
               SwitchListTile(
-                title: const Text('Flash de pantalla'),
-                subtitle: const Text(
-                  'El metrónomo parpadea con cada pulso. Por encima de 180 '
-                  'BPM, solo en el primer pulso del compás.',
-                ),
+                title: Text(t.flash),
+                subtitle: Text(t.flashHelp),
                 value: lib.flash,
                 onChanged: (v) => state.setFlash(beats: v),
               ),
               SwitchListTile(
-                title: const Text('Flash en la cuenta de entrada'),
-                subtitle: const Text(
-                  'Si parpadea durante la cuenta, esté o no encendido el '
-                  'flash de cada pulso.',
-                ),
+                title: Text(t.flashCountIn),
+                subtitle: Text(t.flashCountInHelp),
                 value: lib.flashCountIn,
                 onChanged: (v) => state.setFlash(countIn: v),
               ),
@@ -68,31 +75,27 @@ class SettingsPage extends StatelessWidget {
                 leading: const Icon(Icons.groups_outlined),
                 title: Text(
                   lib.sessionCode.isEmpty
-                      ? 'Código de sesión'
-                      : 'Código de sesión: ${lib.sessionCode}',
+                      ? t.sessionCode
+                      : t.sessionCodeIs(lib.sessionCode),
                 ),
                 subtitle: Text(
                   lib.sessionCode.isEmpty
-                      ? 'Sin código: Link estándar, compatible con Ableton '
-                            'Live y otras apps. Pon uno si hay otra banda en '
-                            'la misma red.'
-                      : 'Solo comparten click los dispositivos con este '
-                            'mismo código. Ableton Live y otras apps con '
-                            'Link no os ven hasta que lo quites.',
+                      ? t.sessionCodeOffHelp
+                      : t.sessionCodeOnHelp,
                 ),
                 trailing: lib.sessionCode.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Quitar código (volver a Link estándar)',
+                        tooltip: t.sessionCodeReset,
                         icon: const Icon(Icons.restart_alt),
                         onPressed: () => state.setSessionCode(''),
                       ),
                 onTap: () async {
                   final code = await askName(
                     context,
-                    title: 'Código de sesión',
+                    title: t.sessionCode,
                     initial: lib.sessionCode,
-                    label: 'El mismo en toda la banda',
+                    label: t.sessionCodeLabel,
                   );
                   if (code != null) await state.setSessionCode(code);
                 },
@@ -103,19 +106,13 @@ class SettingsPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Ajuste de latencia: ${lib.extraLatencyMs.round()} ms',
-                    ),
+                    Text(t.latencyAdjust(lib.extraLatencyMs.round())),
                     const SizedBox(height: 4),
+                    Text(t.latencyHelp, style: small),
                     Text(
-                      'Súbelo si tu click suena tarde respecto a los demás '
-                      '(p. ej. con auriculares Bluetooth), o calíbralo '
-                      'abajo.',
-                      style: small,
-                    ),
-                    Text(
-                      'Latencia de salida ya compensada: '
-                      '${state.engine.outputLatencyMs().toStringAsFixed(1)} ms',
+                      t.latencyCompensated(
+                        state.engine.outputLatencyMs().toStringAsFixed(1),
+                      ),
                       style: small,
                     ),
                   ],
@@ -156,36 +153,36 @@ class _CalibrateTileState extends State<_CalibrateTile> {
     final (result, error) = await widget.state.calibrate();
     if (!mounted) return;
     setState(() => running = false);
+    final t = AppLocalizations.of(context);
     final String text;
     if (result == null) {
-      text = error!;
+      text = switch (error!) {
+        CalibrationError.notFollowing => t.calibrateNotFollowing,
+        CalibrationError.noPermission => t.calibrateNoPermission,
+        CalibrationError.micFailed => t.calibrateMicFailed,
+        CalibrationError.notHeard => t.calibrateNotHeard,
+      };
     } else if (result.$1.abs() < 3) {
-      text = 'Ya estabas alineado con el líder.';
+      text = t.calibrateAligned;
     } else {
       final (late, applied) = result;
-      final heard =
-          'Sonabas ${late.abs().round()} ms ${late > 0 ? 'tarde' : 'antes'}.';
+      final ms = late.abs().round();
+      final heard = late > 0 ? t.calibrateLate(ms) : t.calibrateEarly(ms);
       text = (late - applied).abs() < 1
-          ? '$heard Ajuste corregido.'
-          : '$heard El ajuste llegó a su límite '
-                '(${widget.state.library.extraLatencyMs.round()} ms); revisa '
-                'la salida de audio de este dispositivo.';
+          ? '$heard ${t.calibrateFixed}'
+          : '$heard '
+                '${t.calibrateLimit(widget.state.library.extraLatencyMs.round())}';
     }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return ListTile(
       leading: const Icon(Icons.mic_none),
-      title: const Text('Calibrar con el líder'),
-      subtitle: Text(
-        running
-            ? 'Escuchando… no toques nada durante 8 segundos.'
-            : 'Con este dispositivo como Seguidor y el líder sonando cerca, '
-                  'el micrófono escucha los dos clicks y ajusta la latencia. '
-                  'Mejor sin otros seguidores sonando y a un tempo moderado.',
-      ),
+      title: Text(t.calibrate),
+      subtitle: Text(running ? t.calibrateListening : t.calibrateHelp),
       trailing: running
           ? const SizedBox.square(
               dimension: 24,
