@@ -68,6 +68,8 @@
      (`Runner.entitlements`): sin él iOS bloquea el multicast de Link y el
      broadcast del compás. Apple tiene que concederlo al equipo antes de
      poder firmar: <https://developer.apple.com/contact/request/networking-multicast>.
+     Está desactivado en `Engine.xcconfig` hasta entonces (descomentar
+     `CODE_SIGN_ENTITLEMENTS`); sin él se puede probar el modo Solo.
 
 7. **Tap tempo y cuenta de entrada** (hecho en código, sin oír en un
    dispositivo):

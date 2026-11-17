@@ -9,4 +9,6 @@ GCC_PREPROCESSOR_DEFINITIONS = $(inherited) LINK_PLATFORM_UNIX=1 LINK_PLATFORM_M
 OTHER_LDFLAGS = $(inherited) -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework CoreFoundation
 // dart:ffi looks the pc_* symbols up at run time; stripping all symbols hides them.
 STRIP_STYLE = non-global
-CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements
+// Multicast for Link (Runner/Runner.entitlements). Off until Apple grants it to
+// the team: a free or unapproved team cannot sign with it. Then uncomment:
+// CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements
