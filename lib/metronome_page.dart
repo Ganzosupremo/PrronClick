@@ -7,6 +7,8 @@ import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'lyrics_view.dart';
 import 'meter_picker.dart';
+import 'practice.dart';
+import 'repeat_button.dart';
 import 'song.dart';
 
 class MetronomePage extends StatefulWidget {
@@ -208,7 +210,8 @@ class _MetronomePageState extends State<MetronomePage>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton.filledTonal(
+            RepeatIconButton(
+              filledTonal: true,
               tooltip: t.tempoDown,
               onPressed: canControl ? () => setTempo(tempo - 1) : null,
               icon: const Icon(Icons.remove),
@@ -221,7 +224,8 @@ class _MetronomePageState extends State<MetronomePage>
                 style: Theme.of(context).textTheme.displayLarge,
               ),
             ),
-            IconButton.filledTonal(
+            RepeatIconButton(
+              filledTonal: true,
               tooltip: t.tempoUp,
               onPressed: canControl ? () => setTempo(tempo + 1) : null,
               icon: const Icon(Icons.add),
@@ -446,6 +450,12 @@ class _ToolsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    int stepMax({required bool up}) => stepRampMax(
+      state.library.rampMax,
+      state.library.rampMaxStep,
+      up: up,
+      tempo: state.engine.tempo(),
+    );
     return Card.outlined(
       child: ExpansionTile(
         leading: const Icon(Icons.handyman_outlined),
@@ -578,6 +588,47 @@ class _ToolsPanel extends StatelessWidget {
                 label: t.rampEveryBars,
                 value: state.library.rampBars,
                 onChanged: (n) => state.setRamp(bars: n),
+              ),
+              Row(
+                children: [
+                  Expanded(child: Text(t.rampMaxBpm)),
+                  RepeatIconButton(
+                    tooltip: t.rampMaxDown,
+                    onPressed: state.library.rampMax > 0
+                        ? () => state.setRamp(max: stepMax(up: false))
+                        : null,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  SizedBox(
+                    width: 96,
+                    child: Text(
+                      state.library.rampMax > 0
+                          ? '${state.library.rampMax}'
+                          : t.rampNoMax,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  RepeatIconButton(
+                    tooltip: t.rampMaxUp,
+                    onPressed: state.library.rampMax < 300
+                        ? () => state.setRamp(max: stepMax(up: true))
+                        : null,
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(child: Text(t.rampMaxStep)),
+                  DropdownButton<int>(
+                    value: state.library.rampMaxStep,
+                    items: [
+                      for (final n in rampMaxSteps)
+                        DropdownMenuItem(value: n, child: Text('$n')),
+                    ],
+                    onChanged: (n) => state.setRamp(maxStep: n),
+                  ),
+                ],
               ),
             ],
           ],

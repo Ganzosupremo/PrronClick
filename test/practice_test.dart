@@ -159,4 +159,24 @@ void main() {
     expect((praise.seconds, praise.times, praise.key), (1200, 3, 'praise'));
     expect((praise.firstBpm, praise.lastBpm, praise.bestBpm), (110, 120, 127));
   });
+
+  test('the tempo ramp stops at its top', () {
+    expect(rampedTempo(100, 5, 0), 105);
+    expect(rampedTempo(298, 5, 0), 300); // no limit: up to 300
+    expect(rampedTempo(118, 5, 120), 120);
+    expect(rampedTempo(120, 5, 120), 120);
+    expect(rampedTempo(130, 5, 120), 130); // started above it: not lowered
+  });
+
+  test('the top tempo buttons', () {
+    int press(int max, int step, bool up, [double tempo = 100]) =>
+        stepRampMax(max, step, up: up, tempo: tempo);
+    expect(press(0, 5, true, 102), 105); // from no limit: just above the tempo
+    expect(press(0, 10, true, 100), 110);
+    expect(press(0, 5, false), 0);
+    expect(press(120, 5, true), 125);
+    expect(press(120, 1, false), 119);
+    expect(press(298, 5, true), 300);
+    expect(press(22, 5, false), 0); // under 20: no limit again
+  });
 }

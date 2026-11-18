@@ -54,6 +54,27 @@ class Practice {
   };
 }
 
+/// The tempo ramp's next step: [up] BPM more, stopping at [max] (0 = up to
+/// 300). A tempo already above [max] stays where it is.
+double rampedTempo(double tempo, int up, int max) {
+  final top = max > 0 ? max.toDouble() : 300.0;
+  return tempo >= top ? tempo : min(tempo + up, top);
+}
+
+/// The ramp's top after pressing + ([up]) or − with buttons of [step] BPM;
+/// 0 = no limit. From no limit, + starts at the first step above [tempo];
+/// going under 20 is no limit again.
+int stepRampMax(int max, int step, {required bool up, required double tempo}) {
+  if (max == 0) {
+    return up ? min(((tempo / step).floor() + 1) * step, 300) : 0;
+  }
+  final next = up ? max + step : max - step;
+  return next < 20 ? 0 : min(next, 300);
+}
+
+/// Steps the ramp's top tempo buttons can take.
+const rampMaxSteps = [1, 2, 5, 10];
+
 /// Shorter than this is a tempo check, not practice.
 const minPracticeSeconds = 10;
 

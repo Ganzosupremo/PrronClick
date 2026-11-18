@@ -1479,6 +1479,36 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Solo en el primer pulso de cada compás.'**
   String get vibrateDownbeatHelp;
+
+  /// No description provided for @rampMaxBpm.
+  ///
+  /// In es, this message translates to:
+  /// **'Hasta (BPM)'**
+  String get rampMaxBpm;
+
+  /// No description provided for @rampNoMax.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin límite'**
+  String get rampNoMax;
+
+  /// No description provided for @rampMaxDown.
+  ///
+  /// In es, this message translates to:
+  /// **'Bajar el tope'**
+  String get rampMaxDown;
+
+  /// No description provided for @rampMaxUp.
+  ///
+  /// In es, this message translates to:
+  /// **'Subir el tope'**
+  String get rampMaxUp;
+
+  /// No description provided for @rampMaxStep.
+  ///
+  /// In es, this message translates to:
+  /// **'Botones − y + de (BPM)'**
+  String get rampMaxStep;
 }
 
 class _AppLocalizationsDelegate

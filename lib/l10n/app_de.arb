@@ -239,5 +239,10 @@
   "vibrate": "Vibration im Takt",
   "vibrateHelp": "Das Handy vibriert bei jedem hörbaren Schlag, stärker bei Betonungen. Funktioniert auch bei ausgeschaltetem Bildschirm.",
   "vibrateDownbeat": "Nur auf der 1 vibrieren",
-  "vibrateDownbeatHelp": "Nur auf dem ersten Schlag jedes Takts."
+  "vibrateDownbeatHelp": "Nur auf dem ersten Schlag jedes Takts.",
+  "rampMaxBpm": "Bis (BPM)",
+  "rampNoMax": "Ohne Grenze",
+  "rampMaxDown": "Höchsttempo senken",
+  "rampMaxUp": "Höchsttempo erhöhen",
+  "rampMaxStep": "Schritt der Tasten − und + (BPM)"
 }

@@ -239,5 +239,10 @@
   "vibrate": "Vibrate on the beat",
   "vibrateHelp": "The phone vibrates on each beat that sounds, harder on accents. Works with the screen off.",
   "vibrateDownbeat": "Vibrate only on 1",
-  "vibrateDownbeatHelp": "Only on the first beat of each bar."
+  "vibrateDownbeatHelp": "Only on the first beat of each bar.",
+  "rampMaxBpm": "Up to (BPM)",
+  "rampNoMax": "No limit",
+  "rampMaxDown": "Lower the top tempo",
+  "rampMaxUp": "Raise the top tempo",
+  "rampMaxStep": "− and + buttons step (BPM)"
 }

@@ -34,6 +34,8 @@ class Library {
     this.ramp = false,
     this.rampBpm = 5,
     this.rampBars = 4,
+    this.rampMax = 0,
+    this.rampMaxStep = 5,
     this.sessionCode = '',
     this.language = '',
     List<Song>? songs,
@@ -81,6 +83,14 @@ class Library {
       ramp: settings['ramp'] == true,
       rampBpm: bars(settings['rampBpm'], 5),
       rampBars: bars(settings['rampBars'], 4),
+      rampMax: switch (settings['rampMax']) {
+        final int n when n >= 20 && n <= 300 => n,
+        _ => 0,
+      },
+      rampMaxStep: switch (settings['rampMaxStep']) {
+        final int n when rampMaxSteps.contains(n) => n,
+        _ => 5,
+      },
       sessionCode: switch (settings['sessionCode']) {
         final String s when s.length <= 40 => s.trim(),
         _ => '',
@@ -128,6 +138,8 @@ class Library {
   bool ramp;
   int rampBpm;
   int rampBars;
+  int rampMax; // the ramp stops at this tempo; 0 = no limit (300)
+  int rampMaxStep; // BPM per press of its − and + buttons
 
   /// Only devices with the same code share a click. Empty = standard Link,
   /// which Ableton Live and other Link apps also join.
@@ -214,6 +226,8 @@ class Library {
       'ramp': ramp,
       'rampBpm': rampBpm,
       'rampBars': rampBars,
+      'rampMax': rampMax,
+      'rampMaxStep': rampMaxStep,
       'sessionCode': sessionCode,
       'language': language,
     },

@@ -875,4 +875,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get vibrateDownbeatHelp => 'Solo en el primer pulso de cada compás.';
+
+  @override
+  String get rampMaxBpm => 'Hasta (BPM)';
+
+  @override
+  String get rampNoMax => 'Sin límite';
+
+  @override
+  String get rampMaxDown => 'Bajar el tope';
+
+  @override
+  String get rampMaxUp => 'Subir el tope';
+
+  @override
+  String get rampMaxStep => 'Botones − y + de (BPM)';
 }

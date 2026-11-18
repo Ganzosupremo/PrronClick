@@ -607,7 +607,8 @@ class AppState extends ChangeNotifier {
       _rampStep = step;
     } else if (step > _rampStep) {
       final up = library.rampBpm * (step - _rampStep);
-      engine.setTempo((engine.tempo() + up).clamp(20, 300));
+      final tempo = rampedTempo(engine.tempo(), up, library.rampMax);
+      if (tempo != engine.tempo()) engine.setTempo(tempo);
       _rampStep = step;
     }
   }
@@ -720,8 +721,10 @@ class AppState extends ChangeNotifier {
     store.save(library);
   }
 
-  void setRamp({bool? enabled, int? bpm, int? bars}) {
+  void setRamp({bool? enabled, int? bpm, int? bars, int? max, int? maxStep}) {
     library.ramp = enabled ?? library.ramp;
+    library.rampMax = max ?? library.rampMax;
+    library.rampMaxStep = maxStep ?? library.rampMaxStep;
     library.rampBpm = bpm ?? library.rampBpm;
     library.rampBars = bars ?? library.rampBars;
     _rampStart = null; // count the bars again with the new numbers

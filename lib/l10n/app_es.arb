@@ -278,5 +278,10 @@
   "vibrate": "Vibrar en el pulso",
   "vibrateHelp": "El teléfono vibra en cada pulso que suena, más fuerte en los acentos. Funciona con la pantalla apagada.",
   "vibrateDownbeat": "Vibrar solo en el 1",
-  "vibrateDownbeatHelp": "Solo en el primer pulso de cada compás."
+  "vibrateDownbeatHelp": "Solo en el primer pulso de cada compás.",
+  "rampMaxBpm": "Hasta (BPM)",
+  "rampNoMax": "Sin límite",
+  "rampMaxDown": "Bajar el tope",
+  "rampMaxUp": "Subir el tope",
+  "rampMaxStep": "Botones − y + de (BPM)"
 }
