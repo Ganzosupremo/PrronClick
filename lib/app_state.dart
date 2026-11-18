@@ -837,7 +837,8 @@ class AppState extends ChangeNotifier {
     }
     final at = change! - engine.beatsPerBar();
     if (at == _cuedBeat || at <= engine.beat()) return;
-    engine.scheduleCue(at, cue.$1, cue.$2);
+    final (slot, slot2) = cueToSay(cue);
+    engine.scheduleCue(at, slot, slot2);
     _cuedBeat = at;
   }
 

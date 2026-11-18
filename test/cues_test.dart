@@ -16,7 +16,24 @@ void main() {
     expect(sectionCue('Brücke'), cue('bridge'));
     expect(sectionCue('PUENTE'), cue('bridge'));
     expect(sectionCue('Final'), cue('ending'));
-    expect(sectionCue('Solo de guitarra'), cue('solo'));
+    expect(sectionCue('Solo de guitarra'), cue('guitar_solo'));
+    expect(sectionCue('Solo'), cue('solo'));
+    expect(sectionCue('Post-coro'), cue('post_chorus'));
+    expect(sectionCue('Exhortación'), cue('exhortation'));
+    expect(sectionCue('Vamp 2'), cue('vamp', 2));
+  });
+
+  test('a numbered recording is said in one go, else word then number', () {
+    expect(cueToSay(sectionCue('Coro 2')!), cue('chorus_2'));
+    expect(cueToSay(sectionCue('Verso 6')!), cue('verse_6'));
+    expect(cueToSay(sectionCue('Puente 5')!), cue('bridge', 5));
+    expect(cueToSay(sectionCue('Vamp 2')!), cue('vamp', 2));
+    expect(cueToSay(sectionCue('Coro')!), cue('chorus'));
+  });
+
+  test('every slot fits the engine and is used once', () {
+    expect(cueSlots.values.toSet().length, cueSlots.length);
+    expect(cueSlots.values.every((s) => s >= 1 && s <= 63), isTrue);
   });
 
   test('pre-chorus is not heard as chorus', () {

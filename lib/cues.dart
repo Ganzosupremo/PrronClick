@@ -35,13 +35,61 @@ const cueSlots = {
   'ending': 19,
   'breakdown': 20,
   'tag': 21,
+  'post_chorus': 22,
+  'guitar_solo': 23,
+  'bass_solo': 24,
+  'drum_solo': 25,
+  'acapella': 26,
+  'rap': 27,
+  'vamp': 28,
+  'turnaround': 29,
+  'exhortation': 30,
+  // Numbered recordings ("Chorus 2" in one word); other numbers are said
+  // as the word, then the count.
+  'verse_1': 31,
+  'verse_2': 32,
+  'verse_3': 33,
+  'verse_4': 34,
+  'verse_5': 35,
+  'verse_6': 36,
+  'pre_chorus_1': 37,
+  'pre_chorus_2': 38,
+  'pre_chorus_3': 39,
+  'pre_chorus_4': 40,
+  'chorus_1': 41,
+  'chorus_2': 42,
+  'chorus_3': 43,
+  'chorus_4': 44,
+  'bridge_1': 45,
+  'bridge_2': 46,
+  'bridge_3': 47,
+  'bridge_4': 48,
 };
 
-// Words a section name may use, in any of the app's languages. Pre-chorus
-// comes before chorus: "pre coro" also contains "coro".
+/// The slots to say for [cue] (from [sectionCue]): the word's own numbered
+/// recording if there is one, else the word, then the number.
+(int, int) cueToSay((int, int) cue) {
+  final (slot, n) = cue;
+  final word = cueSlots.entries.firstWhere((e) => e.value == slot).key;
+  final numbered = cueSlots['${word}_$n'];
+  return numbered != null ? (numbered, 0) : cue;
+}
+
+// Words a section name may use, in any of the app's languages. Longer names
+// come first: "pre coro" and "post coro" also contain "coro", "solo de
+// guitarra" contains "solo".
 const _sectionWords = [
   ('pre_chorus', ['pre chorus', 'prechorus', 'precoro', 'pre coro']),
   ('pre_chorus', ['pre refrain', 'prerefrain']),
+  ('post_chorus', ['post chorus', 'postchorus', 'postcoro', 'post coro']),
+  ('guitar_solo', ['guitar solo', 'solo de guitarra', 'gitarrensolo']),
+  ('bass_solo', ['bass solo', 'solo de bajo', 'basssolo']),
+  ('drum_solo', ['drum solo', 'solo de bateria', 'schlagzeugsolo']),
+  ('acapella', ['acapella', 'a capella', 'a cappella', 'acappella']),
+  ('rap', ['rap']),
+  ('vamp', ['vamp']),
+  ('turnaround', ['turnaround']),
+  ('exhortation', ['exhortation', 'exhortacion']),
   ('intro', ['intro', 'introduccion', 'einleitung']),
   ('verse', ['verse', 'verso', 'estrofa', 'strophe']),
   ('chorus', ['chorus', 'coro', 'estribillo', 'refrain']),
