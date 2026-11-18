@@ -270,15 +270,18 @@ class LibraryStore {
       return Library.fromJson((json as Map).cast<String, Object?>());
     } on Object {
       // Never lose a damaged file: keep it aside and start fresh.
-      await file.rename('${file.path}.corrupt');
+      // Dated: a second damaged file must not replace the first.
+      final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      await file.rename('${file.path}.corrupt-$stamp');
       return Library();
     }
   }
 
-  /// Saves are queued so two quick saves never interleave.
+  /// Saves are queued so two quick saves never interleave. A failed one does
+  /// not stop the ones after it (it is reported to the caller only).
   Future<void> save(Library library) {
     final text = jsonEncode(library.toJson());
-    return _pending = _pending.then((_) async {
+    return _pending = _pending.catchError((_) {}).then((_) async {
       final tmp = File('${file.path}.tmp');
       await tmp.writeAsString(text, flush: true);
       await tmp.rename(file.path);

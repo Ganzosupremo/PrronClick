@@ -123,6 +123,11 @@ PC_API double pc_beat(void);
 // 2 plain). -1 if stopped, calibrating or none in the next 16 beats.
 PC_API long long pc_next_felt_beat(bool downbeat_only, int* level);
 
+// Screen flash: the beat of the last click that sounded (only bar starts if
+// downbeat_only); *flags = accent level | 4 if the bar's first | 8 if count-in.
+// NaN if stopped, calibrating or none in the last 16 beats.
+PC_API double pc_last_felt_beat(bool downbeat_only, int* flags);
+
 #ifdef __cplusplus
 }
 #endif

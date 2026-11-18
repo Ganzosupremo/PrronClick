@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -29,6 +30,12 @@ class AppState extends ChangeNotifier {
     : audioOk = engine.init() {
     _applyLibrary();
     _checkVibration();
+    // Out of sight the app may be closed or killed: keep what was practised.
+    AppLifecycleListener(
+      onHide: () {
+        if (_practicing case final p?) _recordPractice(p);
+      },
+    );
     // Sections, setlists and the tempo ramp all watch the beat go by.
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     // Playing can start or stop from many places (button, Link, the leader, a
@@ -84,6 +91,7 @@ class AppState extends ChangeNotifier {
     if (shareMode != ShareMode.solo) await setShareMode(ShareMode.solo);
     engine.setPlaying(false);
     _practicing = null; // it belonged to the library going away
+    _practiceSavedAt = null;
     activeSetlist = null;
     _forgetChange();
     currentSong = null;
@@ -553,6 +561,13 @@ class AppState extends ChangeNotifier {
       bpm: bpm,
     );
     p.bpm = max(p.bpm, bpm);
+    // Kept in the history while it plays, so a killed app loses at most a
+    // minute of it.
+    final now = DateTime.now();
+    if (now.difference(_practiceSavedAt ?? p.start).inSeconds >= 60) {
+      _practiceSavedAt = now;
+      _recordPractice(p);
+    }
     // The tools as they apply now (see _applyPractice and _rampTick).
     if (library.practiceTools) {
       if (library.ramp && canControl) p.tools.add(PracticeTool.ramp);
@@ -561,12 +576,21 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  DateTime? _practiceSavedAt;
+
   void _endPractice() {
     final p = _practicing!;
     _practicing = null;
+    _practiceSavedAt = null;
+    _recordPractice(p);
+  }
+
+  /// Puts [p], with its length so far, in the history (once) and saves.
+  void _recordPractice(Practice p) {
     p.seconds = DateTime.now().difference(p.start).inSeconds;
     if (p.seconds < minPracticeSeconds) return;
-    final history = library.history..add(p);
+    final history = library.history;
+    if (!history.contains(p)) history.add(p);
     if (history.length > maxPracticeEntries) {
       history.removeRange(0, history.length - maxPracticeEntries);
     }

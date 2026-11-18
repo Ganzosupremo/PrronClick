@@ -107,4 +107,19 @@ inline bool nextFelt(const Rules& r, double beat, bool downbeatOnly, double* at,
   return false;
 }
 
+// The last beat click at or before `beat` that sounds: nextFelt backwards.
+inline bool prevFelt(const Rules& r, double beat, bool downbeatOnly, double* at, int* level) {
+  const double last = std::floor(beat * 4) / 4;
+  for (int i = 0; i < 64; ++i) {
+    const double b = last - i * 0.25;
+    if (!crosses(r, b - 0.125, b)) continue;
+    const double coord = std::floor(clickCoord(r, b));
+    if (isSilent(r, coord) || (downbeatOnly && !isAccent(r, coord))) continue;
+    *at = b;
+    *level = accentLevel(r, coord);
+    return true;
+  }
+  return false;
+}
+
 }  // namespace pc

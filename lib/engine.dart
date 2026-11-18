@@ -2,6 +2,8 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
+
 /// Bindings to the native engine in `native/prronclick.h`.
 class Engine {
   Engine([String? libraryPath]) : this._(_open(libraryPath));
@@ -161,7 +163,24 @@ class Engine {
       setGapTrainer = lib
           .lookupFunction<Void Function(Int, Int), void Function(int, int)>(
             'pc_set_gap_trainer',
-          );
+          ),
+      _lastFeltBeat = lib
+          .lookupFunction<
+            Double Function(Bool, Pointer<Int>),
+            double Function(bool, Pointer<Int>)
+          >('pc_last_felt_beat');
+
+  final double Function(bool, Pointer<Int>) _lastFeltBeat;
+  static final _flags = malloc<Int>(); // one for the app's life
+
+  /// The last click that sounded (only bar starts if [downbeatOnly]): its
+  /// beat, whether it starts the bar, whether it counts in. Null if none.
+  ({double at, bool downbeat, bool count})? lastFelt(bool downbeatOnly) {
+    final at = _lastFeltBeat(downbeatOnly, _flags);
+    if (at.isNaN) return null;
+    final f = _flags.value;
+    return (at: at, downbeat: f & 4 != 0, count: f & 8 != 0);
+  }
 
   static DynamicLibrary _open(String? path) {
     final name =

@@ -84,9 +84,9 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
       case 'tempo' when double.tryParse(value) != null:
         song.bpm = double.parse(value).clamp(20, 300);
       case 'time':
-        final m = RegExp(r'^(\d+)\s*/\s*(\d+)$').firstMatch(value);
+        final m = RegExp(r'^(\d{1,3})\s*/\s*(\d{1,3})$').firstMatch(value);
         if (m == null) {
-          body.add(line);
+          body.add(line); // not a meter (or absurd numbers): keep the text
         } else {
           final unit = int.parse(m.group(2)!);
           song.beatsPerBar = int.parse(m.group(1)!).clamp(1, 16);
@@ -143,7 +143,7 @@ Section? _section(String value) {
   if (parts[0].isEmpty || bars == null || bars < 1) return null;
   final section = Section(name: parts[0], bars: bars.clamp(1, 999));
   for (final p in parts.skip(2)) {
-    final meter = RegExp(r'^(\d+)\s*/\s*(\d+)$').firstMatch(p);
+    final meter = RegExp(r'^(\d{1,3})\s*/\s*(\d{1,3})$').firstMatch(p);
     if (meter != null) {
       final unit = int.parse(meter.group(2)!);
       section.beatsPerBar = int.parse(meter.group(1)!).clamp(1, 16);

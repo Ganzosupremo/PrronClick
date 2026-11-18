@@ -753,6 +753,21 @@ long long pc_next_felt_beat(bool downbeat_only, int* level) {
   return std::max<long long>(0, (state.timeAtBeat(at, kQuantum) - now).count());
 }
 
+double pc_last_felt_beat(bool downbeat_only, int* flags) {
+  if (!g || g->calibrating) return std::nan("");
+  const auto state = g->link.captureAppSessionState();
+  if (!state.isPlaying()) return std::nan("");
+  const double beat = state.beatAtTime(g->link.clock().micros(), kQuantum);
+  const BarConfig c = currentConfig();
+  double at;
+  int level;
+  // Before 0 nothing sounds (see the audio callback).
+  if (!pc::prevFelt(c.rules, beat, downbeat_only, &at, &level) || at < 0) return std::nan("");
+  const double coord = std::floor(pc::clickCoord(c.rules, at));
+  *flags = level | (pc::isAccent(c.rules, coord) ? 4 : 0) | (pc::isCount(c.rules, coord) ? 8 : 0);
+  return at;
+}
+
 }  // extern "C"
 
 #if defined(__ANDROID__)
@@ -760,6 +775,12 @@ long long pc_next_felt_beat(bool downbeat_only, int* level) {
 
 // Haptics.kt runs in the same process and loads this same library, so it
 // reads the engine Dart started. Returns micros * 4 + level, or -1.
+// MainActivity, once the app is closed and Dart is gone.
+extern "C" JNIEXPORT void JNICALL
+Java_com_prronclick_prronclick_MainActivity_shutdownEngine(JNIEnv*, jobject) {
+  pc_shutdown();
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_prronclick_prronclick_Haptics_nextFeltBeat(JNIEnv*, jobject, jboolean downbeatOnly) {
   int level = 0;

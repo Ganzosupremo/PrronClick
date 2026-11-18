@@ -60,12 +60,17 @@ void main() {
 
     final odd = parseChordPro(
       '{t: X}\n{tempo: 999}\n{time: 7/5}\n{duration: 90}\n{meta: artist Yo}\n'
-      '{time: rápido}',
+      '{time: rápido}\n{time: 99999999999999999999/4}\n'
+      '{meta: seccion A; 2; 99999999999999999999/4}',
     ).single;
     expect((odd.bpm, odd.meter, odd.durationSeconds), (300, '7/4', 90));
     expect(odd.note, isNull);
+    expect(odd.sections.single.beatsPerBar, isNull);
     // What it does not understand stays in the text instead of vanishing.
-    expect(odd.lyrics, '{meta: artist Yo}\n{time: rápido}');
+    expect(
+      odd.lyrics,
+      '{meta: artist Yo}\n{time: rápido}\n{time: 99999999999999999999/4}',
+    );
 
     expect(parseChordPro('  \n\n'), isEmpty);
     expect(

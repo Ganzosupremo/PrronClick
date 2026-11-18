@@ -124,21 +124,16 @@ class _MetronomePageState extends State<MetronomePage>
         state.gapTrainer &&
         bar % (state.gapPlay + state.gapMute) >= state.gapPlay;
 
-    // Screen flash: bright on the beat, gone a third of a beat later. Above
-    // 180 BPM only the bar's first beat flashes: more than three flashes a
-    // second can trigger seizures.
+    // Screen flash: bright on each click that sounds (the engine's rules),
+    // gone a third of a beat later. Above 180 BPM only the bar's first beat
+    // flashes: more than three flashes a second can trigger seizures.
     final lib = state.library;
-    final first = currentBeat == 0;
-    final intoBeat = (beat - origin) - (beat - origin).floorToDouble();
-    final flashing =
-        currentBeat >= 0 &&
-        beat >= origin &&
-        !paused &&
-        !muted &&
-        (counting ? lib.flashCountIn : lib.flash) &&
-        (first || tempo <= 180);
-    final flash = flashing
-        ? (1 - intoBeat * 3).clamp(0.0, 1.0) * (first ? 0.5 : 0.3)
+    final felt = lib.flash || lib.flashCountIn
+        ? state.engine.lastFelt(tempo > 180)
+        : null;
+    final flash = felt != null && (felt.count ? lib.flashCountIn : lib.flash)
+        ? (1 - (beat - felt.at) * 3).clamp(0.0, 1.0) *
+              (felt.downbeat ? 0.5 : 0.3)
         : 0.0;
 
     final page = ListView(
@@ -334,9 +329,8 @@ class _MetronomePageState extends State<MetronomePage>
           Positioned.fill(
             child: IgnorePointer(
               child: ColoredBox(
-                color: (first ? scheme.primary : scheme.tertiary).withValues(
-                  alpha: flash,
-                ),
+                color: (felt!.downbeat ? scheme.primary : scheme.tertiary)
+                    .withValues(alpha: flash),
               ),
             ),
           ),

@@ -42,7 +42,7 @@ object Haptics {
 
     @Synchronized
     fun stop() {
-        thread?.interrupt()
+        thread?.let { it.interrupt(); it.join(500) }
         thread = null
     }
 

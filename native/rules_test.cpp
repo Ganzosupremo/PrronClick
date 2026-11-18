@@ -201,6 +201,9 @@ int main() {
         CHECK(level == accentLevel(r, std::floor(clickCoord(r, c.beat))));
         CHECK(level != kSilent && (!downbeat || level == kStrong));
         beat = at;  // just after it fires, the next one
+        // The screen flash looks back: this click, at it and just after.
+        CHECK(prevFelt(r, c.beat, downbeat, &at, &level) && near(at, c.beat));
+        CHECK(prevFelt(r, c.beat + 0.01, downbeat, &at, &level) && near(at, c.beat));
       }
     }
     Rules quiet;

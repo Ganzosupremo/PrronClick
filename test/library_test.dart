@@ -92,7 +92,24 @@ void main() {
     await store.file.writeAsString('{not json');
     final lib = await store.load();
     expect(lib.extraLatencyMs, 0);
-    expect(File('${store.file.path}.corrupt').existsSync(), isTrue);
+    final aside = dir.listSync().where((f) => f.path.contains('.corrupt-'));
+    expect(aside, hasLength(1));
+    // A second damaged file is kept too, not written over the first.
+    await store.file.writeAsString('{not json either');
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+    await store.load();
+    expect(
+      dir.listSync().where((f) => f.path.contains('.corrupt-')),
+      hasLength(2),
+    );
+  });
+
+  test('a failed save does not stop the next ones', () async {
+    final blocker = Directory('${store.file.path}.tmp')..createSync();
+    await expectLater(store.save(Library(language: 'de')), throwsA(anything));
+    blocker.deleteSync();
+    await store.save(Library(language: 'en'));
+    expect((await store.load()).language, 'en');
   });
 
   test('unusable song entries are skipped', () async {

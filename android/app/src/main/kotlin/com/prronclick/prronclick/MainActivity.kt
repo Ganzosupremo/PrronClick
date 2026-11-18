@@ -85,8 +85,17 @@ class MainActivity : FlutterActivity() {
         PlaybackService.onStop = null
         PlaybackService.set(this, false)
         multicastLock?.release()
-        super.onDestroy()
+        super.onDestroy() // Dart is gone after this
+        // Swiped away from the recent apps: the process can live on, and the click with
+        // it, with no screen left to stop it. It goes with the app (Link peers play on).
+        if (isFinishing) {
+            Haptics.stop() // it reads the engine
+            System.loadLibrary("prronclick_engine") // the one Dart opened
+            shutdownEngine()
+        }
     }
+
+    private external fun shutdownEngine()
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
