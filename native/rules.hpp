@@ -89,4 +89,22 @@ inline bool crossesDivision(const Rules& r, double prev, double beat) {
          std::floor(b * r.subdivision) > std::floor(a * r.subdivision);
 }
 
+// The first beat click after `beat` that sounds (subdivisions never count),
+// or only bar starts if `downbeatOnly`: where it falls and its accentLevel.
+// Clicks land on a 16th grid (displacement moves them by quarters of a beat).
+// false if none within 16 beats.
+inline bool nextFelt(const Rules& r, double beat, bool downbeatOnly, double* at, int* level) {
+  const double first = std::floor(beat * 4) / 4 + 0.25;
+  for (int i = 0; i < 64; ++i) {
+    const double b = first + i * 0.25;
+    if (!crosses(r, b - 0.125, b)) continue;
+    const double coord = std::floor(clickCoord(r, b));
+    if (isSilent(r, coord) || (downbeatOnly && !isAccent(r, coord))) continue;
+    *at = b;
+    *level = accentLevel(r, coord);
+    return true;
+  }
+  return false;
+}
+
 }  // namespace pc

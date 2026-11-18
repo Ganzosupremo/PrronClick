@@ -26,6 +26,13 @@ void main() {
     expect((lib.voiceCount, lib.voiceSections), (false, false));
   });
 
+  test('the vibration settings are kept', () async {
+    expect(Library().vibrate, isFalse);
+    await store.save(Library(vibrate: true, vibrateDownbeat: true));
+    final lib = await store.load();
+    expect((lib.vibrate, lib.vibrateDownbeat), (true, true));
+  });
+
   test('the voice settings are kept', () async {
     await store.save(Library(voiceCount: true, voiceSections: true));
     final lib = await store.load();

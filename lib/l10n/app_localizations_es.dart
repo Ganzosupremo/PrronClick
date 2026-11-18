@@ -862,4 +862,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get undo => 'Deshacer';
+
+  @override
+  String get vibrate => 'Vibrar en el pulso';
+
+  @override
+  String get vibrateHelp =>
+      'El teléfono vibra en cada pulso que suena, más fuerte en los acentos. Funciona con la pantalla apagada.';
+
+  @override
+  String get vibrateDownbeat => 'Vibrar solo en el 1';
+
+  @override
+  String get vibrateDownbeatHelp => 'Solo en el primer pulso de cada compás.';
 }

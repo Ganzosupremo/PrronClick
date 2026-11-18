@@ -860,4 +860,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get undo => 'Undo';
+
+  @override
+  String get vibrate => 'Vibrate on the beat';
+
+  @override
+  String get vibrateHelp =>
+      'The phone vibrates on each beat that sounds, harder on accents. Works with the screen off.';
+
+  @override
+  String get vibrateDownbeat => 'Vibrate only on 1';
+
+  @override
+  String get vibrateDownbeatHelp => 'Only on the first beat of each bar.';
 }

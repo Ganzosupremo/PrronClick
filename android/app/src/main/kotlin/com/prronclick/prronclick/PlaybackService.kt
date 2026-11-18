@@ -44,6 +44,7 @@ class PlaybackService : Service() {
         }
         wifiLock = wifi.createWifiLock(mode, "prronclick:link")
             .apply { setReferenceCounted(false); acquire() }
+        Haptics.start(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -58,6 +59,7 @@ class PlaybackService : Service() {
 
     override fun onDestroy() {
         running = false
+        Haptics.stop()
         wakeLock?.release()
         wifiLock?.release()
         super.onDestroy()

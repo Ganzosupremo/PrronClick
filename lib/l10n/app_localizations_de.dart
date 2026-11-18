@@ -864,4 +864,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get undo => 'Rückgängig';
+
+  @override
+  String get vibrate => 'Vibration im Takt';
+
+  @override
+  String get vibrateHelp =>
+      'Das Handy vibriert bei jedem hörbaren Schlag, stärker bei Betonungen. Funktioniert auch bei ausgeschaltetem Bildschirm.';
+
+  @override
+  String get vibrateDownbeat => 'Nur auf der 1 vibrieren';
+
+  @override
+  String get vibrateDownbeatHelp => 'Nur auf dem ersten Schlag jedes Takts.';
 }

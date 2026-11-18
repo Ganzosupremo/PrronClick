@@ -28,6 +28,7 @@ class AppState extends ChangeNotifier {
   AppState.using(this.engine, this.store, this.library)
     : audioOk = engine.init() {
     _applyLibrary();
+    _checkVibration();
     // Sections, setlists and the tempo ramp all watch the beat go by.
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     // Playing can start or stop from many places (button, Link, the leader, a
@@ -49,6 +50,32 @@ class AppState extends ChangeNotifier {
     _applyClick();
     engine.setVoiceCount(library.voiceCount);
     _loadVoices();
+    _applyVibration();
+  }
+
+  static const _haptics = MethodChannel('prronclick/haptics');
+
+  /// Whether this device can vibrate on the beat (Android with a vibrator).
+  bool canVibrate = false;
+
+  Future<void> _checkVibration() async {
+    if (!Platform.isAndroid) return;
+    canVibrate = await _haptics.invokeMethod<bool>('supported') == true;
+    notifyListeners();
+  }
+
+  void _applyVibration() {
+    if (!Platform.isAndroid) return;
+    final mode = !library.vibrate ? 0 : (library.vibrateDownbeat ? 2 : 1);
+    _haptics.invokeMethod('mode', mode);
+  }
+
+  void setVibration({bool? beats, bool? downbeat}) {
+    library.vibrate = beats ?? library.vibrate;
+    library.vibrateDownbeat = downbeat ?? library.vibrateDownbeat;
+    _applyVibration();
+    notifyListeners();
+    store.save(library);
   }
 
   /// Replaces the whole library (songs, setlists, settings, history) with

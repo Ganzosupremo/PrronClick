@@ -178,6 +178,37 @@ int main() {
     CHECK(barAt(r, -0.5) == -1);
     CHECK(isAccent(r, -4));
   }
+  {  // Vibration: the next beat that sounds, as the click stream has it.
+    Rules r;
+    r.gapPlay = 1;
+    r.gapMute = 1;
+    r.displaceBars = 1;
+    r.accentBits = 0b11'10'01'00;  // strong, medium, normal, silent
+    r.accentCount = 4;
+    r.subdivision = 2;
+    for (bool downbeat : {false, true}) {
+      std::vector<Click> want;
+      for (const auto& c : run(r, 0, 40)) {
+        const double coord = std::floor(clickCoord(r, c.beat));
+        if (!isSilent(r, coord) && (!downbeat || isAccent(r, coord))) want.push_back(c);
+      }
+      CHECK(want.size() == (downbeat ? 5u : 15u));  // 5 bars play, 3 beats sound
+      double beat = -0.01, at;
+      int level;
+      for (const auto& c : want) {
+        CHECK(nextFelt(r, beat, downbeat, &at, &level));
+        CHECK(near(at, c.beat));
+        CHECK(level == accentLevel(r, std::floor(clickCoord(r, c.beat))));
+        CHECK(level != kSilent && (!downbeat || level == kStrong));
+        beat = at;  // just after it fires, the next one
+      }
+    }
+    Rules quiet;
+    quiet.muteUntil = 100;
+    double at;
+    int level;
+    CHECK(!nextFelt(quiet, 0, false, &at, &level));  // a long pause: nothing near
+  }
   std::printf(failures ? "%d failure(s)\n" : "all rules tests passed\n", failures);
   return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

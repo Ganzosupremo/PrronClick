@@ -235,5 +235,9 @@
   "backupReplace": "Replace",
   "backupRestored": "Backup restored.",
   "notABackup": "That file is not a PrronClick backup.",
-  "undo": "Undo"
+  "undo": "Undo",
+  "vibrate": "Vibrate on the beat",
+  "vibrateHelp": "The phone vibrates on each beat that sounds, harder on accents. Works with the screen off.",
+  "vibrateDownbeat": "Vibrate only on 1",
+  "vibrateDownbeatHelp": "Only on the first beat of each bar."
 }

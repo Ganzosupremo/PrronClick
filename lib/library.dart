@@ -27,6 +27,8 @@ class Library {
     this.sound = 0,
     this.flash = false,
     this.flashCountIn = false,
+    this.vibrate = false,
+    this.vibrateDownbeat = false,
     this.voiceCount = false,
     this.voiceSections = false,
     this.ramp = false,
@@ -72,6 +74,8 @@ class Library {
       },
       flash: settings['flash'] == true,
       flashCountIn: settings['flashCountIn'] == true,
+      vibrate: settings['vibrate'] == true,
+      vibrateDownbeat: settings['vibrateDownbeat'] == true,
       voiceCount: settings['voiceCount'] == true,
       voiceSections: settings['voiceSections'] == true,
       ramp: settings['ramp'] == true,
@@ -114,6 +118,8 @@ class Library {
 
   bool flash; // the screen flashes on each beat
   bool flashCountIn; // ...and during the count-in
+  bool vibrate; // the phone vibrates on each beat that sounds
+  bool vibrateDownbeat; // ...only on the bar's first
 
   bool voiceCount; // a voice counts the count-in
   bool voiceSections; // ...and names the next section a bar ahead
@@ -201,6 +207,8 @@ class Library {
       'sound': sound,
       'flash': flash,
       'flashCountIn': flashCountIn,
+      'vibrate': vibrate,
+      'vibrateDownbeat': vibrateDownbeat,
       'voiceCount': voiceCount,
       'voiceSections': voiceSections,
       'ramp': ramp,

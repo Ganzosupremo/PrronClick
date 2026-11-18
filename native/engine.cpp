@@ -732,4 +732,38 @@ double pc_beat(void) {
   return g->link.captureAppSessionState().beatAtTime(g->link.clock().micros(), kQuantum);
 }
 
+long long pc_next_felt_beat(bool downbeat_only, int* level) {
+  if (!g || g->calibrating) return -1;
+  const auto state = g->link.captureAppSessionState();
+  if (!state.isPlaying()) return -1;
+  const auto now = g->link.clock().micros();
+  // Before 0 nothing sounds (see the audio callback).
+  const double beat = std::max(state.beatAtTime(now, kQuantum), -0.001);
+  BarConfig c = currentConfig();
+  double at;
+  bool found = pc::nextFelt(c.rules, beat, downbeat_only, &at, level);
+  if (c.hasPending && (!found || at >= c.pendingOrigin)) {
+    // The change of meter or song comes first: search under its rules.
+    if (c.pendingSong && c.pendingBpm <= 0.0) return -1;  // the music stops there
+    const double from = std::max(beat, c.pendingOrigin - 0.001);
+    c.applyPendingAt(c.pendingOrigin);
+    found = pc::nextFelt(c.rules, from, downbeat_only, &at, level);
+  }
+  if (!found) return -1;
+  return std::max<long long>(0, (state.timeAtBeat(at, kQuantum) - now).count());
+}
+
 }  // extern "C"
+
+#if defined(__ANDROID__)
+#include <jni.h>
+
+// Haptics.kt runs in the same process and loads this same library, so it
+// reads the engine Dart started. Returns micros * 4 + level, or -1.
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_prronclick_prronclick_Haptics_nextFeltBeat(JNIEnv*, jobject, jboolean downbeatOnly) {
+  int level = 0;
+  const long long micros = pc_next_felt_beat(downbeatOnly, &level);
+  return micros < 0 ? -1 : micros * 4 + level;
+}
+#endif

@@ -1455,6 +1455,30 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Deshacer'**
   String get undo;
+
+  /// No description provided for @vibrate.
+  ///
+  /// In es, this message translates to:
+  /// **'Vibrar en el pulso'**
+  String get vibrate;
+
+  /// No description provided for @vibrateHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'El teléfono vibra en cada pulso que suena, más fuerte en los acentos. Funciona con la pantalla apagada.'**
+  String get vibrateHelp;
+
+  /// No description provided for @vibrateDownbeat.
+  ///
+  /// In es, this message translates to:
+  /// **'Vibrar solo en el 1'**
+  String get vibrateDownbeat;
+
+  /// No description provided for @vibrateDownbeatHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Solo en el primer pulso de cada compás.'**
+  String get vibrateDownbeatHelp;
 }
 
 class _AppLocalizationsDelegate

@@ -71,6 +71,22 @@ class SettingsPage extends StatelessWidget {
                 value: lib.flashCountIn,
                 onChanged: (v) => state.setFlash(countIn: v),
               ),
+              if (state.canVibrate) ...[
+                SwitchListTile(
+                  title: Text(t.vibrate),
+                  subtitle: Text(t.vibrateHelp),
+                  value: lib.vibrate,
+                  onChanged: (v) => state.setVibration(beats: v),
+                ),
+                SwitchListTile(
+                  title: Text(t.vibrateDownbeat),
+                  subtitle: Text(t.vibrateDownbeatHelp),
+                  value: lib.vibrateDownbeat,
+                  onChanged: lib.vibrate
+                      ? (v) => state.setVibration(downbeat: v)
+                      : null,
+                ),
+              ],
               SwitchListTile(
                 title: Text(t.voiceCount),
                 subtitle: Text(

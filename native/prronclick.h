@@ -118,6 +118,11 @@ PC_API double pc_output_latency_ms(void);
 // Current beat position on the session timeline (for the UI).
 PC_API double pc_beat(void);
 
+// Vibration: microseconds until the next beat whose click sounds (only bar
+// starts if downbeat_only), and its accent in *level (0 strong, 1 medium,
+// 2 plain). -1 if stopped, calibrating or none in the next 16 beats.
+PC_API long long pc_next_felt_beat(bool downbeat_only, int* level);
+
 #ifdef __cplusplus
 }
 #endif

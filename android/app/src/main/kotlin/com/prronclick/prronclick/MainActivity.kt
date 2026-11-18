@@ -42,6 +42,18 @@ class MainActivity : FlutterActivity() {
                     requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MIC_REQUEST)
                 }
             }
+        // "supported": whether the phone can vibrate. "mode" (int): see Haptics.mode.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "prronclick/haptics")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "supported" -> result.success(Haptics.supported(this))
+                    "mode" -> {
+                        Haptics.mode = call.arguments as Int
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         // "keepAlive" (bool): runs PlaybackService while the click plays or is shared.
         // Calls "stop" on Dart when the notification's Parar is pressed.
         val background = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "prronclick/background")
