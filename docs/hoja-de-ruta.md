@@ -204,6 +204,13 @@
   si se queda sin sonar ni compañeros.
 - Latencia real en Windows (reloj de WASAPI).
 
+## Fuera del alcance
+
+PrronClick es un metrónomo para sincronizar a varios músicos, no un
+reproductor de playbacks. Ideas diseñadas pero aparcadas:
+
+- Pistas de acompañamiento: [ideas/pistas-de-acompanamiento.md](ideas/pistas-de-acompanamiento.md).
+
 ## Herramientas de desarrollo
 
 - `tool/link_smoke.dart`: actúa como líder y comprueba que el tempo es el
