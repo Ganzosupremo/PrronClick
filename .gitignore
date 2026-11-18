@@ -46,6 +46,3 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
-
-# Placeholder voice cues (tool/make_placeholder_voices.ps1): not shippable.
-assets/voices/**/*.wav

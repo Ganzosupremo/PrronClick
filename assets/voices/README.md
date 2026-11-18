@@ -1,14 +1,17 @@
 # Voice cues
 
-One folder per language (`es`, `en`, `de`), one short audio file per cue,
-named as in `cueSlots` in `lib/cues.dart`: `1.wav` … `8.wav` for the count-in,
-then `intro`, `verse`, `pre_chorus`, `chorus`, `bridge`, `instrumental`,
-`solo`, `interlude`, `outro`, `ending`, `breakdown` and `tag`.
+Recorded by Otoniel of [LibreTracks](https://github.com/otonielpv/LibreTracks),
+who authorized PrronClick to use them (November 2026).
 
-The WAVs here now are **placeholders** made by
-`tool/make_placeholder_voices.ps1` with the Windows voices. Their license does
-not allow shipping them, so git ignores them. Before a release, replace them
-with recordings we may distribute (ours, or under a license compatible with
-GPL-3.0) and remove the `.gitignore` line.
+One folder per language (`es`, `en`); other app languages use the English
+voices. In each:
+
+- `counts/`: `1.wav` … `7.wav`, the count-in numbers (there is no 8: an
+  eighth beat is silent).
+- `sections/`: the section names. The app uses the ones named in `cueSlots` in
+  `lib/cues.dart`: `intro`, `verse`, `pre_chorus`, `chorus`, `bridge`,
+  `instrumental`, `solo`, `interlude`, `outro`, `ending`, `breakdown`, `tag`.
+- `cues/`: band calls ("Build", "Last time"…). Not used by the app yet, so not
+  in the build (see `pubspec.yaml`).
 
 Without the files the app still works: the voice settings are just disabled.

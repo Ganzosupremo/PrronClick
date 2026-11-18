@@ -807,7 +807,10 @@ class AppState extends ChangeNotifier {
         : languages.contains(phone)
         ? phone
         : 'en';
-    voices = await loadCues(engine, language);
+    voices = await loadCues(
+      engine,
+      voiceLanguages.contains(language) ? language : 'en',
+    );
     notifyListeners();
   }
 

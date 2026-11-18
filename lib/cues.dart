@@ -9,8 +9,11 @@ import 'package:flutter/services.dart';
 import 'engine.dart';
 import 'song.dart';
 
-/// Engine slot of each cue file, `assets/voices/<language>/<file>.wav`. Slots
-/// 1-8 are the numbers, which the engine says in the count-in.
+/// Languages with voices; any other app language uses English ones.
+const voiceLanguages = ['es', 'en'];
+
+/// Engine slot of each cue file: numbers 1-8 (which the engine says in the
+/// count-in) in `assets/voices/<language>/counts/`, the rest in `sections/`.
 const cueSlots = {
   '1': 1,
   '2': 2,
@@ -85,10 +88,13 @@ Future<int> loadCues(Engine engine, String language) async {
   for (final MapEntry(key: file, value: slot) in cueSlots.entries) {
     Uint8List? bytes;
     try {
-      final data = await rootBundle.load('assets/voices/$language/$file.wav');
+      final folder = slot <= 8 ? 'counts' : 'sections';
+      final data = await rootBundle.load(
+        'assets/voices/$language/$folder/$file.wav',
+      );
       bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     } on FlutterError {
-      // not in this build: placeholder voices are not committed
+      // no recording for this cue (there is no "8"): it stays silent
     }
     if (bytes == null) {
       engine.loadCue(slot, nullptr, 0);
