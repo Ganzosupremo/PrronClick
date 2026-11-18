@@ -225,5 +225,15 @@
   "historyBestBpm": "Bestes Tempo",
   "historyTempoChange": "Tempoänderung",
   "historyTempoPerSession": "Tempo pro Einheit",
-  "historyTapPoint": "Tippe oder wische im Diagramm, um jede Einheit zu sehen."
+  "historyTapPoint": "Tippe oder wische im Diagramm, um jede Einheit zu sehen.",
+  "backupSave": "Sicherung speichern",
+  "backupSaveHelp": "Songs, Setlists, Einstellungen und Übungsverlauf in einer Datei.",
+  "backupRestore": "Sicherung wiederherstellen",
+  "backupRestoreHelp": "Ersetzt alles durch eine früher gespeicherte Datei, von diesem oder einem anderen Gerät.",
+  "backupRestoreAsk": "Alles ersetzen?",
+  "backupRestoreWhat": "Deine Songs, Setlists, Einstellungen und dein Verlauf werden durch die der Datei ersetzt: {songs, plural, =1{1 Song} other{{songs} Songs}} und {setlists, plural, =1{1 Setlist} other{{setlists} Setlists}}.",
+  "backupReplace": "Ersetzen",
+  "backupRestored": "Sicherung wiederhergestellt.",
+  "notABackup": "Diese Datei ist keine PrronClick-Sicherung.",
+  "undo": "Rückgängig"
 }

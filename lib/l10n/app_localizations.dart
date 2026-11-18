@@ -1395,6 +1395,66 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Toca o desliza en el gráfico para ver cada sesión.'**
   String get historyTapPoint;
+
+  /// No description provided for @backupSave.
+  ///
+  /// In es, this message translates to:
+  /// **'Guardar copia de seguridad'**
+  String get backupSave;
+
+  /// No description provided for @backupSaveHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Canciones, setlists, ajustes e historial de práctica en un archivo.'**
+  String get backupSaveHelp;
+
+  /// No description provided for @backupRestore.
+  ///
+  /// In es, this message translates to:
+  /// **'Restaurar copia de seguridad'**
+  String get backupRestore;
+
+  /// No description provided for @backupRestoreHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Reemplaza todo por lo de un archivo guardado antes, de este u otro dispositivo.'**
+  String get backupRestoreHelp;
+
+  /// No description provided for @backupRestoreAsk.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Reemplazar todo?'**
+  String get backupRestoreAsk;
+
+  /// No description provided for @backupRestoreWhat.
+  ///
+  /// In es, this message translates to:
+  /// **'Tus canciones, setlists, ajustes e historial se reemplazan por los del archivo: {songs, plural, =1{1 canción} other{{songs} canciones}} y {setlists, plural, =1{1 setlist} other{{setlists} setlists}}.'**
+  String backupRestoreWhat(int songs, int setlists);
+
+  /// No description provided for @backupReplace.
+  ///
+  /// In es, this message translates to:
+  /// **'Reemplazar'**
+  String get backupReplace;
+
+  /// No description provided for @backupRestored.
+  ///
+  /// In es, this message translates to:
+  /// **'Copia de seguridad restaurada.'**
+  String get backupRestored;
+
+  /// No description provided for @notABackup.
+  ///
+  /// In es, this message translates to:
+  /// **'Ese archivo no es una copia de seguridad de PrronClick.'**
+  String get notABackup;
+
+  /// No description provided for @undo.
+  ///
+  /// In es, this message translates to:
+  /// **'Deshacer'**
+  String get undo;
 }
 
 class _AppLocalizationsDelegate

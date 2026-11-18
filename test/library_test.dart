@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -176,5 +177,32 @@ void main() {
     expect(songBars(song(60, 120, 4)), 30); // 120 beats
     expect(songBars(song(200, 84, 3)), 93); // 280 beats / 3 = 93.3
     expect(songBars(song(1, 60, 4)), 1);
+  });
+
+  test('a backup brings everything back', () {
+    final lib = Library(
+      songs: [Song(id: 'a', name: 'A', bpm: 120, beatsPerBar: 4)],
+      language: 'de',
+      voiceCount: true,
+    );
+    final back = libraryFromBackup(
+      jsonDecode(jsonEncode(backupOf(lib, DateTime(2026, 11, 18)))),
+    )!;
+    expect(back.songs.single.name, 'A');
+    expect((back.language, back.voiceCount), ('de', true));
+  });
+
+  test('only a backup is restored', () {
+    final lib = Library().toJson();
+    expect(libraryFromBackup(lib), isNull); // the library file itself
+    expect(libraryFromBackup({'prronclick': 'backup'}), isNull);
+    expect(libraryFromBackup('text'), isNull);
+    expect(
+      libraryFromBackup({
+        'prronclick': 'backup',
+        'library': {'songs': 'not a list'},
+      }),
+      isNull,
+    );
   });
 }

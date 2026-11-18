@@ -263,5 +263,16 @@
   "historyBestBpm": "Mejor tempo",
   "historyTempoChange": "Cambio de tempo",
   "historyTempoPerSession": "Tempo por sesión",
-  "historyTapPoint": "Toca o desliza en el gráfico para ver cada sesión."
+  "historyTapPoint": "Toca o desliza en el gráfico para ver cada sesión.",
+  "backupSave": "Guardar copia de seguridad",
+  "backupSaveHelp": "Canciones, setlists, ajustes e historial de práctica en un archivo.",
+  "backupRestore": "Restaurar copia de seguridad",
+  "backupRestoreHelp": "Reemplaza todo por lo de un archivo guardado antes, de este u otro dispositivo.",
+  "backupRestoreAsk": "¿Reemplazar todo?",
+  "backupRestoreWhat": "Tus canciones, setlists, ajustes e historial se reemplazan por los del archivo: {songs, plural, =1{1 canción} other{{songs} canciones}} y {setlists, plural, =1{1 setlist} other{{setlists} setlists}}.",
+  "@backupRestoreWhat": {"placeholders": {"songs": {"type": "int"}, "setlists": {"type": "int"}}},
+  "backupReplace": "Reemplazar",
+  "backupRestored": "Copia de seguridad restaurada.",
+  "notABackup": "Ese archivo no es una copia de seguridad de PrronClick.",
+  "undo": "Deshacer"
 }

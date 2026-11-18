@@ -225,5 +225,15 @@
   "historyBestBpm": "Best tempo",
   "historyTempoChange": "Tempo change",
   "historyTempoPerSession": "Tempo per session",
-  "historyTapPoint": "Tap or slide on the chart to see each session."
+  "historyTapPoint": "Tap or slide on the chart to see each session.",
+  "backupSave": "Save a backup",
+  "backupSaveHelp": "Songs, setlists, settings and practice history in one file.",
+  "backupRestore": "Restore a backup",
+  "backupRestoreHelp": "Replaces everything with a file saved before, on this or another device.",
+  "backupRestoreAsk": "Replace everything?",
+  "backupRestoreWhat": "Your songs, setlists, settings and history are replaced by the file's: {songs, plural, =1{1 song} other{{songs} songs}} and {setlists, plural, =1{1 setlist} other{{setlists} setlists}}.",
+  "backupReplace": "Replace",
+  "backupRestored": "Backup restored.",
+  "notABackup": "That file is not a PrronClick backup.",
+  "undo": "Undo"
 }

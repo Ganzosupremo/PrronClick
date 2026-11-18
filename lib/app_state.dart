@@ -27,13 +27,7 @@ class AppState extends ChangeNotifier {
   /// [load] is the app's way in; tests bring their own engine and store.
   AppState.using(this.engine, this.store, this.library)
     : audioOk = engine.init() {
-    engine.setExtraLatencyMs(library.extraLatencyMs);
-    engine.setLinkPort(sessionPort(library.sessionCode));
-    _applyCountIn();
-    _applyPractice();
-    _applyClick();
-    engine.setVoiceCount(library.voiceCount);
-    _loadVoices();
+    _applyLibrary();
     // Sections, setlists and the tempo ramp all watch the beat go by.
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     // Playing can start or stop from many places (button, Link, the leader, a
@@ -44,6 +38,38 @@ class AppState extends ChangeNotifier {
         if (call.method == 'stop') await stopFromNotification();
       });
     }
+  }
+
+  /// Hands the library's settings to the engine.
+  void _applyLibrary() {
+    engine.setExtraLatencyMs(library.extraLatencyMs);
+    engine.setLinkPort(sessionPort(library.sessionCode));
+    _applyCountIn();
+    _applyPractice();
+    _applyClick();
+    engine.setVoiceCount(library.voiceCount);
+    _loadVoices();
+  }
+
+  /// Replaces the whole library (songs, setlists, settings, history) with
+  /// [restored], stopped and alone. Returns the one replaced, to undo.
+  Future<Library> restoreLibrary(Library restored) async {
+    if (shareMode != ShareMode.solo) await setShareMode(ShareMode.solo);
+    engine.setPlaying(false);
+    _practicing = null; // it belonged to the library going away
+    activeSetlist = null;
+    _forgetChange();
+    currentSong = null;
+    sectionIndex = 0;
+    _accents = null;
+    _sendAccents(null);
+    _rampStart = null;
+    final old = library;
+    library = restored;
+    _applyLibrary();
+    notifyListeners();
+    await store.save(library);
+    return old;
   }
 
   static const _background = MethodChannel('prronclick/background');
@@ -85,7 +111,7 @@ class AppState extends ChangeNotifier {
 
   final Engine engine;
   final LibraryStore store;
-  final Library library;
+  Library library;
   final bool audioOk;
 
   ShareMode shareMode = ShareMode.solo;

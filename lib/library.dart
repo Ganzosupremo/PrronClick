@@ -215,6 +215,25 @@ class Library {
   };
 }
 
+/// Everything in one file, to move to another device or keep safe.
+Map<String, Object?> backupOf(Library library, DateTime when) => {
+  'prronclick': 'backup',
+  'saved': when.toIso8601String(),
+  'library': library.toJson(),
+};
+
+/// The library in a [backupOf] file; null if [json] is not one.
+Library? libraryFromBackup(Object? json) {
+  if (json is! Map || json['prronclick'] != 'backup') return null;
+  final library = json['library'];
+  if (library is! Map) return null;
+  try {
+    return Library.fromJson(library.cast<String, Object?>());
+  } on Object {
+    return null; // a field of the wrong type: not a file we wrote
+  }
+}
+
 /// Saves the library as one JSON file, written atomically.
 class LibraryStore {
   LibraryStore(this.file);

@@ -815,4 +815,51 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get historyTapPoint =>
       'Toca o desliza en el gráfico para ver cada sesión.';
+
+  @override
+  String get backupSave => 'Guardar copia de seguridad';
+
+  @override
+  String get backupSaveHelp =>
+      'Canciones, setlists, ajustes e historial de práctica en un archivo.';
+
+  @override
+  String get backupRestore => 'Restaurar copia de seguridad';
+
+  @override
+  String get backupRestoreHelp =>
+      'Reemplaza todo por lo de un archivo guardado antes, de este u otro dispositivo.';
+
+  @override
+  String get backupRestoreAsk => '¿Reemplazar todo?';
+
+  @override
+  String backupRestoreWhat(int songs, int setlists) {
+    String _temp0 = intl.Intl.pluralLogic(
+      songs,
+      locale: localeName,
+      other: '$songs canciones',
+      one: '1 canción',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      setlists,
+      locale: localeName,
+      other: '$setlists setlists',
+      one: '1 setlist',
+    );
+    return 'Tus canciones, setlists, ajustes e historial se reemplazan por los del archivo: $_temp0 y $_temp1.';
+  }
+
+  @override
+  String get backupReplace => 'Reemplazar';
+
+  @override
+  String get backupRestored => 'Copia de seguridad restaurada.';
+
+  @override
+  String get notABackup =>
+      'Ese archivo no es una copia de seguridad de PrronClick.';
+
+  @override
+  String get undo => 'Deshacer';
 }

@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'chordpro.dart';
 import 'l10n/app_localizations.dart';
+import 'library.dart';
 import 'setlist.dart';
 
 const _maxBytes = 1 << 20; // nobody's lyrics are over 1 MB
@@ -114,3 +115,79 @@ Future<void> exportSetlist(
       .convert(state.library.exportSetlist(setlist)),
   mimeType: 'application/json',
 );
+
+// Years of practice history and lyrics, with room to spare.
+const _maxBackupBytes = 32 << 20;
+
+/// Everything (songs, setlists, settings, history) in one JSON file.
+Future<void> saveBackup(BuildContext context, AppState state) {
+  final now = DateTime.now();
+  final date = now.toIso8601String().substring(0, 10);
+  return _save(
+    context,
+    'PrronClick-$date.json',
+    jsonEncode(backupOf(state.library, now)),
+    mimeType: 'application/json',
+  );
+}
+
+/// Picks a backup and, once confirmed, replaces everything with it. The
+/// snack bar offers to undo.
+Future<void> restoreBackup(BuildContext context, AppState state) async {
+  final say = _sayOn(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final t = AppLocalizations.of(context);
+  Library? restored;
+  try {
+    final file = await FilePicker.pickFile(dialogTitle: t.backupRestore);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (bytes.length <= _maxBackupBytes) {
+      try {
+        restored = libraryFromBackup(jsonDecode(decodeText(bytes)));
+      } on FormatException {
+        // not JSON: reported below
+      }
+    }
+  } on Exception catch (e) {
+    debugPrint('restore backup: $e');
+    say(t.cannotRead);
+    return;
+  }
+  if (restored == null) {
+    say(t.notABackup);
+    return;
+  }
+  if (!context.mounted) return;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(t.backupRestoreAsk),
+      content: Text(
+        t.backupRestoreWhat(restored!.songs.length, restored.setlists.length),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(t.cancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(t.backupReplace),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  final old = await state.restoreLibrary(restored);
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(t.backupRestored),
+      duration: const Duration(seconds: 10),
+      action: SnackBarAction(
+        label: t.undo,
+        onPressed: () => state.restoreLibrary(old),
+      ),
+    ),
+  );
+}

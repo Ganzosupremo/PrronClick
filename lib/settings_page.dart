@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'setlists_page.dart';
+import 'transfer.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key, required this.state});
@@ -89,6 +90,19 @@ class SettingsPage extends StatelessWidget {
                 onChanged: state.voices == 0
                     ? null
                     : (v) => state.setVoice(sections: v),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.save_outlined),
+                title: Text(t.backupSave),
+                subtitle: Text(t.backupSaveHelp),
+                onTap: () => saveBackup(context, state),
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore),
+                title: Text(t.backupRestore),
+                subtitle: Text(t.backupRestoreHelp),
+                onTap: () => restoreBackup(context, state),
               ),
               const Divider(),
               ListTile(
