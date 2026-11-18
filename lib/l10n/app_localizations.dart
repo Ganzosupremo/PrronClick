@@ -316,6 +316,12 @@ abstract class AppLocalizations {
   /// **'Esta canción no tiene letra.'**
   String get noLyrics;
 
+  /// No description provided for @closeSong.
+  ///
+  /// In es, this message translates to:
+  /// **'Quitar canción y setlist'**
+  String get closeSong;
+
   /// No description provided for @lyrics.
   ///
   /// In es, this message translates to:

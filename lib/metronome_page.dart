@@ -205,6 +205,13 @@ class _MetronomePageState extends State<MetronomePage>
                       ),
                     ),
                   ),
+                // Back to the bare metronome, as when the app opens.
+                if (state.currentSong != null || state.activeSetlist != null)
+                  IconButton(
+                    tooltip: t.closeSong,
+                    icon: const Icon(Icons.close),
+                    onPressed: state.closeSong,
+                  ),
                 if (state.shareMode != ShareMode.solo)
                   Chip(
                     avatar: const Icon(Icons.link, size: 18),

@@ -44,6 +44,7 @@
   "stop": "Parar",
   "start": "Empezar",
   "noLyrics": "Esta canción no tiene letra.",
+  "closeSong": "Quitar canción y setlist",
   "lyrics": "Letra",
   "setlistEnds": "Termina {when}",
   "@setlistEnds": {"placeholders": {"when": {"type": "String"}}},

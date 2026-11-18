@@ -146,6 +146,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noLyrics => 'Esta canción no tiene letra.';
 
   @override
+  String get closeSong => 'Quitar canción y setlist';
+
+  @override
   String get lyrics => 'Letra';
 
   @override

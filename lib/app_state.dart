@@ -89,15 +89,9 @@ class AppState extends ChangeNotifier {
   /// [restored], stopped and alone. Returns the one replaced, to undo.
   Future<Library> restoreLibrary(Library restored) async {
     if (shareMode != ShareMode.solo) await setShareMode(ShareMode.solo);
-    engine.setPlaying(false);
     _practicing = null; // it belonged to the library going away
     _practiceSavedAt = null;
-    activeSetlist = null;
-    _forgetChange();
-    currentSong = null;
-    sectionIndex = 0;
-    _accents = null;
-    _sendAccents(null);
+    closeSong();
     _rampStart = null;
     final old = library;
     library = restored;
@@ -313,6 +307,25 @@ class AppState extends ChangeNotifier {
     if (activeSetlist != null) stopSetlist();
     _forgetChange();
     _load(song);
+  }
+
+  /// Leaves the loaded song and any setlist, as when the app opens: stopped,
+  /// nothing scheduled, automatic accents. Tempo and meter stay. A follower
+  /// does not stop or re-accent the band's click.
+  void closeSong() {
+    _accents = null;
+    if (canControl) {
+      engine.setPlaying(false); // the practice entry and the ramp end with it
+      _sendAccents(null);
+    }
+    engine.clearCues();
+    _cuedBeat = null;
+    activeSetlist = null;
+    _applyCountIn();
+    _forgetChange();
+    currentSong = null;
+    sectionIndex = 0;
+    notifyListeners();
   }
 
   /// Meter picked by hand. In a setlist the song keeps its end, rounded up to

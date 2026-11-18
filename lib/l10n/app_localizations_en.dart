@@ -146,6 +146,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noLyrics => 'This song has no lyrics.';
 
   @override
+  String get closeSong => 'Clear song and setlist';
+
+  @override
   String get lyrics => 'Lyrics';
 
   @override

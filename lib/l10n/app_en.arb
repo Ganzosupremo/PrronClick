@@ -39,6 +39,7 @@
   "stop": "Stop",
   "start": "Start",
   "noLyrics": "This song has no lyrics.",
+  "closeSong": "Clear song and setlist",
   "lyrics": "Lyrics",
   "setlistEnds": "Ends {when}",
   "setlistNextIn": "\"{song}\" starts {when}",
