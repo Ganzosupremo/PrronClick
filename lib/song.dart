@@ -95,6 +95,7 @@ class Song {
   Song({
     required this.id,
     required this.name,
+    this.author,
     required this.bpm,
     required this.beatsPerBar,
     this.beatUnit = 4,
@@ -120,6 +121,7 @@ class Song {
     return Song(
       id: id,
       name: name,
+      author: text(json['author']),
       bpm: bpm.toDouble().clamp(20, 300),
       beatsPerBar: bpb.clamp(1, 16),
       beatUnit: beatUnits.contains(unit) ? unit as int : 4,
@@ -144,6 +146,7 @@ class Song {
 
   final String id; // setlists refer to songs by id
   String name;
+  String? author; // who wrote or plays it, e.g. "Elevation Worship"
   double bpm;
   int beatsPerBar;
 
@@ -189,6 +192,7 @@ class Song {
   /// Takes everything but the id from [other] (an imported copy).
   void copyFrom(Song other) {
     name = other.name;
+    author = other.author;
     bpm = other.bpm;
     beatsPerBar = other.beatsPerBar;
     beatUnit = other.beatUnit;
@@ -204,6 +208,7 @@ class Song {
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
+    'author': ?author,
     'bpm': bpm,
     'beatsPerBar': beatsPerBar,
     if (beatUnit != 4) 'beatUnit': beatUnit,
@@ -241,14 +246,14 @@ const _accents = {
 String fold(String s) =>
     s.toLowerCase().split('').map((c) => _accents[c] ?? c).join();
 
-/// Songs whose name has every word of [query] and, if set, that [meter]
-/// ("3/4").
+/// Songs whose name or author has every word of [query] and, if set, that
+/// [meter] ("3/4").
 List<Song> filterSongs(List<Song> songs, String query, String? meter) {
   final words = fold(query).split(' ').where((w) => w.isNotEmpty).toList();
   return [
     for (final s in songs)
       if ((meter == null || s.meter == meter) &&
-          words.every(fold(s.name).contains))
+          words.every(fold('${s.name} ${s.author ?? ''}').contains))
         s,
   ];
 }

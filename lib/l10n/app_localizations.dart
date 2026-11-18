@@ -310,6 +310,12 @@ abstract class AppLocalizations {
   /// **'Empezar'**
   String get start;
 
+  /// No description provided for @noLyrics.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta canción no tiene letra.'**
+  String get noLyrics;
+
   /// No description provided for @lyrics.
   ///
   /// In es, this message translates to:
@@ -358,11 +364,17 @@ abstract class AppLocalizations {
   /// **'Salir del setlist'**
   String get leaveSetlist;
 
-  /// No description provided for @tools.
+  /// No description provided for @panelBand.
   ///
   /// In es, this message translates to:
-  /// **'Herramientas'**
-  String get tools;
+  /// **'Banda'**
+  String get panelBand;
+
+  /// No description provided for @panelPractice.
+  ///
+  /// In es, this message translates to:
+  /// **'Práctica'**
+  String get panelPractice;
 
   /// No description provided for @shareClick.
   ///
@@ -529,7 +541,7 @@ abstract class AppLocalizations {
   /// No description provided for @practiceToolsHelp.
   ///
   /// In es, this message translates to:
-  /// **'Muestra el click desplazado y el entrenador de tempo en el panel de Herramientas.'**
+  /// **'Añade al metrónomo la sección Práctica: click desplazado, entrenador de tempo y rampa.'**
   String get practiceToolsHelp;
 
   /// No description provided for @countInHelp.
@@ -783,6 +795,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Quitar sección'**
   String get removeSection;
+
+  /// No description provided for @authorOptional.
+  ///
+  /// In es, this message translates to:
+  /// **'Autor (opcional)'**
+  String get authorOptional;
 
   /// No description provided for @keyOptional.
   ///

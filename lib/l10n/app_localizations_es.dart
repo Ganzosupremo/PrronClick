@@ -143,6 +143,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get start => 'Empezar';
 
   @override
+  String get noLyrics => 'Esta canción no tiene letra.';
+
+  @override
   String get lyrics => 'Letra';
 
   @override
@@ -173,7 +176,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get leaveSetlist => 'Salir del setlist';
 
   @override
-  String get tools => 'Herramientas';
+  String get panelBand => 'Banda';
+
+  @override
+  String get panelPractice => 'Práctica';
 
   @override
   String get shareClick => 'Compartir click';
@@ -265,7 +271,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get practiceToolsHelp =>
-      'Muestra el click desplazado y el entrenador de tempo en el panel de Herramientas.';
+      'Añade al metrónomo la sección Práctica: click desplazado, entrenador de tempo y rampa.';
 
   @override
   String get countInHelp =>
@@ -418,6 +424,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get removeSection => 'Quitar sección';
+
+  @override
+  String get authorOptional => 'Autor (opcional)';
 
   @override
   String get keyOptional => 'Tonalidad (opcional)';

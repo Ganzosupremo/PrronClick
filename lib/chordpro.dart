@@ -77,6 +77,8 @@ List<Song> parseChordPro(String text, {String fallbackName = 'Sin título'}) {
       case 'title' || 't' when value.isNotEmpty:
         song.name = value;
         named = true;
+      case 'artist' when value.isNotEmpty:
+        song.author = value;
       case 'key' when value.isNotEmpty:
         song.key = value;
       case 'transpose' when int.tryParse(value) != null:
@@ -160,6 +162,7 @@ String toChordPro(Iterable<Song> songs) => [
   for (final s in songs)
     [
       '{title: ${s.name}}',
+      if (s.author != null) '{artist: ${s.author}}',
       if (s.key != null) '{key: ${s.key}}',
       if (s.transpose != 0) '{transpose: ${s.transpose}}',
       '{tempo: ${s.bpm.round()}}',

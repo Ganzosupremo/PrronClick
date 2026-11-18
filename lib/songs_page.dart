@@ -6,6 +6,7 @@ import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'meter_picker.dart';
 import 'song.dart';
+import 'theme.dart';
 
 class SongsPage extends StatefulWidget {
   const SongsPage({super.key, required this.state, required this.onLoaded});
@@ -115,7 +116,7 @@ class _SongsPageState extends State<SongsPage> {
                     child: const Icon(Icons.drag_handle),
                   ),
             title: Text(song.name),
-            subtitle: Text(song.summary),
+            subtitle: Text([?song.author, song.summary].join('\n')),
             selected: song == state.currentSong,
             onTap: () => _load(context, song),
             trailing: PopupMenuButton<String>(
@@ -215,6 +216,7 @@ class SongEditor extends StatefulWidget {
 class _SongEditorState extends State<SongEditor> {
   final form = GlobalKey<FormState>();
   late final name = TextEditingController(text: widget.song?.name);
+  late final author = TextEditingController(text: widget.song?.author);
   late final bpm = TextEditingController(
     text: (widget.song?.bpm ?? 120).round().toString(),
   );
@@ -241,6 +243,7 @@ class _SongEditorState extends State<SongEditor> {
   @override
   void dispose() {
     name.dispose();
+    author.dispose();
     bpm.dispose();
     duration.dispose();
     key.dispose();
@@ -300,6 +303,7 @@ class _SongEditorState extends State<SongEditor> {
         );
     song
       ..name = name.text.trim()
+      ..author = orNull(author.text)?.trim()
       ..bpm = double.parse(bpm.text)
       ..beatsPerBar = beatsPerBar
       ..beatUnit = beatUnit
@@ -317,7 +321,7 @@ class _SongEditorState extends State<SongEditor> {
     final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.song == null ? t.newSong : t.editSong),
+        title: PageTitle(widget.song == null ? t.newSong : t.editSong),
         actions: [TextButton(onPressed: _save, child: Text(t.save))],
       ),
       body: Form(
@@ -332,6 +336,12 @@ class _SongEditorState extends State<SongEditor> {
               decoration: InputDecoration(labelText: t.name),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? t.nameRequired : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: author,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(labelText: t.authorOptional),
             ),
             const SizedBox(height: 16),
             TextFormField(

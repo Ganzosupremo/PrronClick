@@ -14,6 +14,7 @@ import 'song.dart';
 class ShowInfo {
   const ShowInfo({
     this.song,
+    this.author,
     this.key,
     this.note,
     this.beatUnit = 4,
@@ -30,6 +31,7 @@ class ShowInfo {
   });
 
   final String? song;
+  final String? author; // the song's author
   final String? key; // the song's musical key
   final String? note; // the song's one-line note for the band
   final int beatUnit; // the meter's lower number (notation only)
@@ -47,6 +49,7 @@ class ShowInfo {
 
   Map<String, Object?> toJson() => {
     'song': ?song,
+    'author': ?author,
     'key': ?key,
     'note': ?note,
     if (beatUnit != 4) 'unit': beatUnit,
@@ -72,6 +75,7 @@ class ShowInfo {
         v is String ? (v.length > 80 ? v.substring(0, 80) : v) : null;
     final s = m['setlist'];
     final song = text(m['song']), key = text(m['key']), note = text(m['note']);
+    final author = text(m['author']);
     final unit = beatUnits.contains(m['unit']) ? m['unit'] as int : 4;
     final accents = parseAccents(m['accents']);
     final transpose = switch (m['transpose']) {
@@ -87,6 +91,7 @@ class ShowInfo {
     if (s is! Map) {
       return ShowInfo(
         song: song,
+        author: author,
         key: key,
         note: note,
         beatUnit: unit,
@@ -100,6 +105,7 @@ class ShowInfo {
     final pos = s['pos'], total = s['total'], change = s['change'];
     return ShowInfo(
       song: song,
+      author: author,
       key: key,
       note: note,
       beatUnit: unit,
@@ -120,6 +126,7 @@ class ShowInfo {
   bool operator ==(Object other) =>
       other is ShowInfo &&
       other.song == song &&
+      other.author == author &&
       other.key == key &&
       other.note == note &&
       other.beatUnit == beatUnit &&
@@ -137,6 +144,7 @@ class ShowInfo {
   @override
   int get hashCode => Object.hash(
     song,
+    author,
     key,
     note,
     beatUnit,

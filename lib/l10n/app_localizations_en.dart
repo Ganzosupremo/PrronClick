@@ -143,6 +143,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get start => 'Start';
 
   @override
+  String get noLyrics => 'This song has no lyrics.';
+
+  @override
   String get lyrics => 'Lyrics';
 
   @override
@@ -173,7 +176,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leaveSetlist => 'Leave setlist';
 
   @override
-  String get tools => 'Tools';
+  String get panelBand => 'Band';
+
+  @override
+  String get panelPractice => 'Practice';
 
   @override
   String get shareClick => 'Share the click';
@@ -265,7 +271,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get practiceToolsHelp =>
-      'Shows the displaced click and the gap trainer in the Tools panel.';
+      'Adds the Practice section to the metronome: displaced click, gap trainer and tempo ramp.';
 
   @override
   String get countInHelp =>
@@ -417,6 +423,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeSection => 'Remove section';
+
+  @override
+  String get authorOptional => 'Artist (optional)';
 
   @override
   String get keyOptional => 'Key (optional)';

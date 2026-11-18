@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'setlists_page.dart';
+import 'theme.dart';
 import 'transfer.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -18,7 +19,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t.settings)),
+      appBar: AppBar(title: PageTitle(t.settings)),
       body: ListenableBuilder(
         listenable: state,
         builder: (context, _) {

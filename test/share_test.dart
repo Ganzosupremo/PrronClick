@@ -24,8 +24,14 @@ void main() {
     expect(got.changeBeat, 33);
   });
 
-  test('key, note and beat unit reach followers', () {
-    const info = ShowInfo(song: 'Dos', key: 'Am', note: 'Sola', beatUnit: 8);
+  test('author, key, note and beat unit reach followers', () {
+    const info = ShowInfo(
+      song: 'Dos',
+      author: 'Yo',
+      key: 'Am',
+      note: 'Sola',
+      beatUnit: 8,
+    );
     expect(ShowInfo.fromMessage(wire(info.toJson()), 0), info);
     const inSet = ShowInfo(song: 'Dos', key: 'Am', beatUnit: 8, setlist: 'B');
     expect(ShowInfo.fromMessage(wire(inSet.toJson()), 0), inSet);

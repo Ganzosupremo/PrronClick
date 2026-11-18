@@ -40,6 +40,10 @@ void main() {
       find.widgetWithText(TextFormField, 'Nombre'),
       'Vals',
     );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Autor (opcional)'),
+      'Strauss ',
+    );
     // An accent set in 4/4 is dropped when the meter changes.
     await tester.tap(find.bySemanticsLabel('Pulso 2: Normal'));
     await tester.pump();
@@ -62,11 +66,19 @@ void main() {
     }
     expect(find.bySemanticsLabel('Pulso 1: Mudo'), findsOneWidget);
 
+    // Text fields scroll too: name the editor's list.
+    await tester.scrollUntilVisible(
+      find.text('Tonalidad (opcional)'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Tonalidad (opcional)'),
       'Am',
     );
     // A section with its own tempo, keeping the song's meter.
+    await tester.ensureVisible(find.text('Añadir'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Añadir'));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -88,6 +100,7 @@ void main() {
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
     expect((saved!.name, saved!.meter, saved!.key), ('Vals', '6/16', 'Am'));
+    expect(saved!.author, 'Strauss');
     expect(saved!.accents, [3, 2, 2, 2, 2, 2]);
     final section = saved!.sections.single;
     expect((section.name, section.bars, section.bpm), ('Coro', 12, 90));

@@ -4,8 +4,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'accent_circles.dart';
 import 'app_state.dart';
+import 'flash.dart';
 import 'l10n/app_localizations.dart';
-import 'lyrics_view.dart';
+import 'lyrics_screen.dart';
 import 'meter_picker.dart';
 import 'practice.dart';
 import 'repeat_button.dart';
@@ -34,6 +35,8 @@ class _MetronomePageState extends State<MetronomePage>
   int pendingBeatsPerBar = 0;
   double muteUntil = 0;
   double countUntil = 0;
+
+  _Panel? panel; // null = every section closed
 
   AppState get state => widget.state;
 
@@ -124,216 +127,272 @@ class _MetronomePageState extends State<MetronomePage>
         state.gapTrainer &&
         bar % (state.gapPlay + state.gapMute) >= state.gapPlay;
 
-    // Screen flash: bright on each click that sounds (the engine's rules),
-    // gone a third of a beat later. Above 180 BPM only the bar's first beat
-    // flashes: more than three flashes a second can trigger seizures.
     final lib = state.library;
-    final felt = lib.flash || lib.flashCountIn
-        ? state.engine.lastFelt(tempo > 180)
-        : null;
-    final flash = felt != null && (felt.count ? lib.flashCountIn : lib.flash)
-        ? (1 - (beat - felt.at) * 3).clamp(0.0, 1.0) *
-              (felt.downbeat ? 0.5 : 0.3)
-        : 0.0;
 
-    final page = ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (state.showInfo.setlist != null)
-          _SetlistBar(state: state, beat: beat, beatsPerBar: beatsPerBar),
-        if (state.shareMode != ShareMode.solo)
-          Center(
-            child: Chip(
-              avatar: const Icon(Icons.link, size: 18),
-              label: Text(switch (state.shareMode) {
-                ShareMode.leader => t.leaderPeers(peers),
-                ShareMode.follower =>
-                  peers == 0 ? t.searchingLeader : t.followingLeader,
-                ShareMode.solo => '',
-              }),
-            ),
-          ),
-        SizedBox(
-          height: 24,
-          child: state.showInfo.song == null
-              ? null
-              : Text(
-                  state.showInfo.song!,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-        ),
-        if (aboutSong.isNotEmpty)
-          Text(
-            aboutSong,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: scheme.tertiary),
-          ),
-        if (comingUp != null)
-          Text(
-            comingUp,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        // The count-in always counts plainly (see accentLevel in rules.hpp).
-        AccentCircles(
-          levels: !counting && accents?.length == beatsPerBar
-              ? accents!
-              : defaultAccents(beatsPerBar, info.beatUnit),
-          current: currentBeat,
-          onTap: canControl ? (i) => state.cycleAccent(i, beatsPerBar) : null,
-        ),
-        SizedBox(
-          height: 24,
-          child: muted || paused || counting
-              ? Text(
-                  paused
-                      ? t.statusPause
-                      : counting
-                      ? t.countIn
-                      : t.statusSilence,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.outline),
-                )
-              : null,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    final text = Theme.of(context).textTheme;
+    final panels = [
+      (_Panel.click, Icons.graphic_eq, t.myClick),
+      (_Panel.band, Icons.link, t.panelBand),
+      if (lib.practiceTools)
+        (_Panel.practice, Icons.fitness_center, t.panelPractice),
+    ];
+    // Practice can be turned off in Settings while its section is open.
+    final shownPanel = panels.any((p) => p.$1 == panel) ? panel : null;
+    final status = paused
+        ? t.statusPause
+        : counting
+        ? t.countIn
+        : muted
+        ? t.statusSilence
+        : null;
+
+    // The stage: what is playing and the controls used while playing.
+    final stage = Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            RepeatIconButton(
-              filledTonal: true,
-              tooltip: t.tempoDown,
-              onPressed: canControl ? () => setTempo(tempo - 1) : null,
-              icon: const Icon(Icons.remove),
-            ),
-            SizedBox(
-              width: 160,
-              child: Text(
-                tempo.round().toString(),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displayLarge,
-              ),
-            ),
-            RepeatIconButton(
-              filledTonal: true,
-              tooltip: t.tempoUp,
-              onPressed: canControl ? () => setTempo(tempo + 1) : null,
-              icon: const Icon(Icons.add),
-            ),
-          ],
-        ),
-        const Text('BPM', textAlign: TextAlign.center),
-        Slider(
-          min: 20,
-          max: 300,
-          value: tempo.clamp(20, 300),
-          label: tempo.round().toString(),
-          onChanged: canControl ? setTempo : null,
-        ),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: canControl ? _tap : null,
-            icon: const Icon(Icons.touch_app_outlined),
-            label: Text(t.tapTempo),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: FloatingActionButton.large(
-            heroTag:
-                null, // every tab has a FAB in the same route: no shared tag
-            tooltip: playing ? t.stop : t.start,
-            onPressed: canControl
-                ? () => state.engine.setPlaying(!playing)
-                : null,
-            child: Icon(playing ? Icons.stop : Icons.play_arrow),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(child: Text(t.meter)),
-            OutlinedButton(
-              onPressed: canControl
-                  ? () => _pickMeter(shownBeats, info.beatUnit)
-                  : null,
-              child: Text('$shownBeats/${info.beatUnit}'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _ToolsPanel(state: state, bar: playing ? bar : 0),
-        if (lyrics != null)
-          // Keyed: lines above come and go ("Next: ..."), and without a key
-          // the list would rebuild the card closed.
-          Card.outlined(
-            key: const ValueKey('lyrics'),
-            child: ExpansionTile(
-              key: const PageStorageKey('lyrics'),
-              leading: const Icon(Icons.lyrics_outlined),
-              title: Text(t.lyrics),
-              shape: const Border(),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(t.transpose)),
-                    IconButton(
-                      tooltip: t.transposeDown,
-                      onPressed: canControl && info.transpose > -11
-                          ? () => state.setTranspose(info.transpose - 1)
-                          : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    SizedBox(
-                      width: 72,
-                      child: Text(
-                        [
-                          info.transpose > 0
-                              ? '+${info.transpose}'
-                              : '${info.transpose}',
-                          ?info.key,
-                        ].join(' · '),
-                        textAlign: TextAlign.center,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (info.song != null)
+                        Text(
+                          info.song!,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.headlineMedium,
+                        ),
+                      if (info.author != null)
+                        Text(
+                          info.author!,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleMedium!.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      if (aboutSong.isNotEmpty)
+                        Text(
+                          aboutSong,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyMedium!.copyWith(
+                            color: scheme.tertiary,
+                          ),
+                        ),
+                      if (comingUp != null)
+                        Text(
+                          comingUp,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                // The lyrics open on their own screen, under a small stage.
+                if (lyrics != null)
+                  IconButton.filledTonal(
+                    tooltip: t.lyrics,
+                    icon: const Icon(Icons.lyrics_outlined),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        fullscreenDialog: true,
+                        builder: (_) => LyricsScreen(state: state),
                       ),
                     ),
-                    IconButton(
-                      tooltip: t.transposeUp,
-                      onPressed: canControl && info.transpose < 11
-                          ? () => state.setTranspose(info.transpose + 1)
-                          : null,
-                      icon: const Icon(Icons.add),
+                  ),
+                if (state.shareMode != ShareMode.solo)
+                  Chip(
+                    avatar: const Icon(Icons.link, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    label: Text(switch (state.shareMode) {
+                      ShareMode.leader => t.leaderPeers(peers),
+                      ShareMode.follower =>
+                        peers == 0 ? t.searchingLeader : t.followingLeader,
+                      ShareMode.solo => '',
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // The count-in always counts plainly (see accentLevel in rules.hpp).
+            AccentCircles(
+              levels: !counting && accents?.length == beatsPerBar
+                  ? accents!
+                  : defaultAccents(beatsPerBar, info.beatUnit),
+              current: currentBeat,
+              onTap: canControl
+                  ? (i) => state.cycleAccent(i, beatsPerBar)
+                  : null,
+            ),
+            SizedBox(
+              height: 24,
+              child: status == null
+                  ? null
+                  : Text(
+                      status,
+                      textAlign: TextAlign.center,
+                      style: text.labelLarge!.copyWith(color: scheme.tertiary),
                     ),
-                  ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                RepeatIconButton(
+                  filledTonal: true,
+                  tooltip: t.tempoDown,
+                  onPressed: canControl ? () => setTempo(tempo - 1) : null,
+                  icon: const Icon(Icons.remove),
                 ),
-                LyricsView(
-                  text: lyrics,
-                  transpose: info.transpose,
-                  section: playing ? info.section : null,
+                // On a narrow phone the number shrinks to fit, always by the
+                // same amount: it is measured against an invisible "000",
+                // not the tempo shown, so 199 and 200 are the same size.
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            for (final digits in [
+                              '000',
+                              tempo.round().toString(),
+                            ])
+                              Opacity(
+                                opacity: digits == '000' ? 0 : 1,
+                                child: Text(
+                                  digits,
+                                  style: text.displayLarge!.copyWith(
+                                    fontSize: 120,
+                                    height: 0.9,
+                                    letterSpacing: -2,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        Text(
+                          'BPM',
+                          style: text.labelLarge!.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                RepeatIconButton(
+                  filledTonal: true,
+                  tooltip: t.tempoUp,
+                  onPressed: canControl ? () => setTempo(tempo + 1) : null,
+                  icon: const Icon(Icons.add),
                 ),
               ],
             ),
+            Slider(
+              min: 20,
+              max: 300,
+              value: tempo.clamp(20, 300),
+              label: tempo.round().toString(),
+              onChanged: canControl ? setTempo : null,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _SideButton(
+                    onPressed: canControl ? _tap : null,
+                    top: const Icon(Icons.touch_app_outlined),
+                    label: t.tapTempo,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Tooltip(
+                  message: playing ? t.stop : t.start,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primaryContainer,
+                      foregroundColor: scheme.onPrimaryContainer,
+                      minimumSize: const Size(112, 76),
+                      shape: const StadiumBorder(),
+                    ),
+                    onPressed: canControl
+                        ? () => state.engine.setPlaying(!playing)
+                        : null,
+                    child: Icon(
+                      playing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                      size: 48,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SideButton(
+                    onPressed: canControl
+                        ? () => _pickMeter(shownBeats, info.beatUnit)
+                        : null,
+                    top: Text(
+                      '$shownBeats/${info.beatUnit}',
+                      style: text.headlineSmall,
+                    ),
+                    label: t.meter,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final page = ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        if (info.setlist != null)
+          _SetlistBar(state: state, beat: beat, beatsPerBar: beatsPerBar),
+        stage,
+        const SizedBox(height: 12),
+        // Everything set up before playing, one section at a time. Tapping
+        // the open one closes it.
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final (id, icon, label) in panels)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    showCheckmark: false,
+                    avatar: Icon(icon, size: 18),
+                    label: Text(label),
+                    selected: id == shownPanel,
+                    onSelected: (on) => setState(() => panel = on ? id : null),
+                  ),
+                ),
+            ],
           ),
+        ),
+        if (shownPanel != null) ...[
+          const SizedBox(height: 12),
+          _PanelCard(panel: shownPanel, state: state, bar: playing ? bar : 0),
+        ],
       ],
     );
     return Stack(
       children: [
         page,
-        if (flash > 0)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: ColoredBox(
-                color: (felt!.downbeat ? scheme.primary : scheme.tertiary)
-                    .withValues(alpha: flash),
-              ),
-            ),
-          ),
+        Positioned.fill(
+          child: ScreenFlash(state: state, beat: beat, tempo: tempo),
+        ),
       ],
     );
   }
@@ -427,9 +486,48 @@ class _SetlistBar extends StatelessWidget {
   }
 }
 
-class _ToolsPanel extends StatelessWidget {
-  const _ToolsPanel({required this.state, required this.bar});
+/// The metronome's sections below the stage.
+enum _Panel { click, band, practice }
 
+/// Tap tempo and the meter: an icon or value over a short label.
+class _SideButton extends StatelessWidget {
+  const _SideButton({
+    required this.onPressed,
+    required this.top,
+    required this.label,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget top;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 76),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+      onPressed: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: 32, child: Center(child: top)),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelCard extends StatelessWidget {
+  const _PanelCard({
+    required this.panel,
+    required this.state,
+    required this.bar,
+  });
+
+  final _Panel panel;
   final AppState state;
   final int bar;
 
@@ -444,189 +542,197 @@ class _ToolsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final help = text.bodySmall!.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
     int stepMax({required bool up}) => stepRampMax(
       state.library.rampMax,
       state.library.rampMaxStep,
       up: up,
       tempo: state.engine.tempo(),
     );
-    return Card.outlined(
-      child: ExpansionTile(
-        leading: const Icon(Icons.handyman_outlined),
-        title: Text(t.tools),
-        shape: const Border(),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(t.shareClick),
-          const SizedBox(height: 8),
-          SegmentedButton<ShareMode>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(value: ShareMode.solo, label: _oneLine(t.modeSolo)),
-              ButtonSegment(
-                value: ShareMode.leader,
-                label: _oneLine(t.modeLeader),
+    final children = switch (panel) {
+      _Panel.click => [
+        Text(t.myClickHelp, style: help),
+        const SizedBox(height: 16),
+        Text(t.subdivision, style: text.titleMedium),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: 1, label: Text(t.no)),
+            const ButtonSegment(value: 2, label: Text('2')),
+            const ButtonSegment(value: 3, label: Text('3')),
+            const ButtonSegment(value: 4, label: Text('4')),
+          ],
+          selected: {state.library.subdivision},
+          onSelectionChanged: (s) => state.setClick(subdivision: s.first),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text(t.volume, style: text.titleMedium),
+            Expanded(
+              child: Slider(
+                value: state.library.volume,
+                onChanged: (v) => state.setClick(volume: v),
+                onChangeEnd: (_) => state.saveLibrary(),
               ),
-              ButtonSegment(
-                value: ShareMode.follower,
-                label: _oneLine(t.modeFollower),
-              ),
-            ],
-            selected: {state.shareMode},
-            onSelectionChanged: (s) => state.setShareMode(s.first),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Expanded(child: Text(t.sound, style: text.titleMedium)),
+            DropdownButton<int>(
+              value: state.library.sound,
+              items: [
+                // In the engine's order (see clickWave in engine.cpp).
+                for (final (i, name) in [
+                  t.soundBeep,
+                  t.soundWood,
+                  t.soundDigital,
+                ].indexed)
+                  DropdownMenuItem(value: i, child: Text(name)),
+              ],
+              onChanged: (n) => state.setClick(sound: n),
+            ),
+          ],
+        ),
+      ],
+      _Panel.band => [
+        Text(t.shareClick, style: text.titleMedium),
+        const SizedBox(height: 8),
+        SegmentedButton<ShareMode>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: ShareMode.solo, label: _oneLine(t.modeSolo)),
+            ButtonSegment(
+              value: ShareMode.leader,
+              label: _oneLine(t.modeLeader),
+            ),
+            ButtonSegment(
+              value: ShareMode.follower,
+              label: _oneLine(t.modeFollower),
+            ),
+          ],
+          selected: {state.shareMode},
+          onSelectionChanged: (s) => state.setShareMode(s.first),
+        ),
+      ],
+      _Panel.practice => [
+        Row(
+          children: [
+            Expanded(child: Text(t.displacedClick, style: text.titleMedium)),
+            if (state.displaceBars > 0)
+              Text(t.displacedNow(_steps[(bar ~/ state.displaceBars) % 4])),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: 0, label: Text(t.no)),
+            ButtonSegment(value: 2, label: Text(t.everyBars(2))),
+            ButtonSegment(value: 3, label: Text(t.everyBars(3))),
+          ],
+          selected: {state.displaceBars},
+          onSelectionChanged: (s) => state.setDisplacement(s.first),
+        ),
+        const SizedBox(height: 4),
+        Text(t.displacedHelp, style: help),
+        const Divider(height: 32),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(t.gapTrainer),
+          subtitle: Text(t.gapTrainerHelp),
+          value: state.gapTrainer,
+          onChanged: (v) => state.setGapTrainer(enabled: v),
+        ),
+        if (state.gapTrainer) ...[
+          _BarsRow(
+            label: t.barsWithClick,
+            value: state.gapPlay,
+            onChanged: (n) => state.setGapTrainer(play: n),
           ),
-          const Divider(height: 32),
-          Text(t.myClick),
-          Text(t.myClickHelp, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 8),
-          Text(t.subdivision),
-          const SizedBox(height: 8),
-          SegmentedButton<int>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(value: 1, label: Text(t.no)),
-              const ButtonSegment(value: 2, label: Text('2')),
-              const ButtonSegment(value: 3, label: Text('3')),
-              const ButtonSegment(value: 4, label: Text('4')),
-            ],
-            selected: {state.library.subdivision},
-            onSelectionChanged: (s) => state.setClick(subdivision: s.first),
+          _BarsRow(
+            label: t.barsSilent,
+            value: state.gapMute,
+            onChanged: (n) => state.setGapTrainer(mute: n),
           ),
-          const SizedBox(height: 8),
+        ],
+        const Divider(height: 32),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(t.tempoRamp),
+          subtitle: Text(t.tempoRampHelp),
+          value: state.library.ramp,
+          onChanged: (v) => state.setRamp(enabled: v),
+        ),
+        if (state.library.ramp) ...[
+          _BarsRow(
+            label: t.rampUpBpm,
+            value: state.library.rampBpm,
+            onChanged: (n) => state.setRamp(bpm: n),
+          ),
+          _BarsRow(
+            label: t.rampEveryBars,
+            value: state.library.rampBars,
+            onChanged: (n) => state.setRamp(bars: n),
+          ),
           Row(
             children: [
-              Text(t.volume),
-              Expanded(
-                child: Slider(
-                  value: state.library.volume,
-                  onChanged: (v) => state.setClick(volume: v),
-                  onChangeEnd: (_) => state.saveLibrary(),
+              Expanded(child: Text(t.rampMaxBpm)),
+              RepeatIconButton(
+                tooltip: t.rampMaxDown,
+                onPressed: state.library.rampMax > 0
+                    ? () => state.setRamp(max: stepMax(up: false))
+                    : null,
+                icon: const Icon(Icons.remove),
+              ),
+              SizedBox(
+                width: 96,
+                child: Text(
+                  state.library.rampMax > 0
+                      ? '${state.library.rampMax}'
+                      : t.rampNoMax,
+                  textAlign: TextAlign.center,
                 ),
               ),
+              RepeatIconButton(
+                tooltip: t.rampMaxUp,
+                onPressed: state.library.rampMax < 300
+                    ? () => state.setRamp(max: stepMax(up: true))
+                    : null,
+                icon: const Icon(Icons.add),
+              ),
             ],
           ),
           Row(
             children: [
-              Expanded(child: Text(t.sound)),
+              Expanded(child: Text(t.rampMaxStep)),
               DropdownButton<int>(
-                value: state.library.sound,
+                value: state.library.rampMaxStep,
                 items: [
-                  // In the engine's order (see clickWave in engine.cpp).
-                  for (final (i, name) in [
-                    t.soundBeep,
-                    t.soundWood,
-                    t.soundDigital,
-                  ].indexed)
-                    DropdownMenuItem(value: i, child: Text(name)),
+                  for (final n in rampMaxSteps)
+                    DropdownMenuItem(value: n, child: Text('$n')),
                 ],
-                onChanged: (n) => state.setClick(sound: n),
+                onChanged: (n) => state.setRamp(maxStep: n),
               ),
             ],
           ),
-          if (state.library.practiceTools) ...[
-            const Divider(height: 32),
-            Row(
-              children: [
-                Expanded(child: Text(t.displacedClick)),
-                if (state.displaceBars > 0)
-                  Text(t.displacedNow(_steps[(bar ~/ state.displaceBars) % 4])),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<int>(
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(value: 0, label: Text(t.no)),
-                ButtonSegment(value: 2, label: Text(t.everyBars(2))),
-                ButtonSegment(value: 3, label: Text(t.everyBars(3))),
-              ],
-              selected: {state.displaceBars},
-              onSelectionChanged: (s) => state.setDisplacement(s.first),
-            ),
-            Text(t.displacedHelp, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(t.gapTrainer),
-              subtitle: Text(t.gapTrainerHelp),
-              value: state.gapTrainer,
-              onChanged: (v) => state.setGapTrainer(enabled: v),
-            ),
-            if (state.gapTrainer) ...[
-              _BarsRow(
-                label: t.barsWithClick,
-                value: state.gapPlay,
-                onChanged: (n) => state.setGapTrainer(play: n),
-              ),
-              _BarsRow(
-                label: t.barsSilent,
-                value: state.gapMute,
-                onChanged: (n) => state.setGapTrainer(mute: n),
-              ),
-            ],
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(t.tempoRamp),
-              subtitle: Text(t.tempoRampHelp),
-              value: state.library.ramp,
-              onChanged: (v) => state.setRamp(enabled: v),
-            ),
-            if (state.library.ramp) ...[
-              _BarsRow(
-                label: t.rampUpBpm,
-                value: state.library.rampBpm,
-                onChanged: (n) => state.setRamp(bpm: n),
-              ),
-              _BarsRow(
-                label: t.rampEveryBars,
-                value: state.library.rampBars,
-                onChanged: (n) => state.setRamp(bars: n),
-              ),
-              Row(
-                children: [
-                  Expanded(child: Text(t.rampMaxBpm)),
-                  RepeatIconButton(
-                    tooltip: t.rampMaxDown,
-                    onPressed: state.library.rampMax > 0
-                        ? () => state.setRamp(max: stepMax(up: false))
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  SizedBox(
-                    width: 96,
-                    child: Text(
-                      state.library.rampMax > 0
-                          ? '${state.library.rampMax}'
-                          : t.rampNoMax,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  RepeatIconButton(
-                    tooltip: t.rampMaxUp,
-                    onPressed: state.library.rampMax < 300
-                        ? () => state.setRamp(max: stepMax(up: true))
-                        : null,
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(child: Text(t.rampMaxStep)),
-                  DropdownButton<int>(
-                    value: state.library.rampMaxStep,
-                    items: [
-                      for (final n in rampMaxSteps)
-                        DropdownMenuItem(value: n, child: Text('$n')),
-                    ],
-                    onChanged: (n) => state.setRamp(maxStep: n),
-                  ),
-                ],
-              ),
-            ],
-          ],
         ],
+      ],
+    };
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
       ),
     );
   }

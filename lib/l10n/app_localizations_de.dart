@@ -143,6 +143,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get start => 'Start';
 
   @override
+  String get noLyrics => 'Dieser Song hat keinen Text.';
+
+  @override
   String get lyrics => 'Text';
 
   @override
@@ -173,7 +176,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get leaveSetlist => 'Setlist verlassen';
 
   @override
-  String get tools => 'Werkzeuge';
+  String get panelBand => 'Band';
+
+  @override
+  String get panelPractice => 'Üben';
 
   @override
   String get shareClick => 'Klick teilen';
@@ -266,7 +272,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get practiceToolsHelp =>
-      'Zeigt den verschobenen Klick und den Tempo-Trainer im Werkzeuge-Bereich.';
+      'Fügt dem Metronom den Bereich Üben hinzu: verschobener Klick, Tempo-Trainer und Tempo-Rampe.';
 
   @override
   String get countInHelp =>
@@ -418,6 +424,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get removeSection => 'Abschnitt entfernen';
+
+  @override
+  String get authorOptional => 'Interpret (optional)';
 
   @override
   String get keyOptional => 'Tonart (optional)';

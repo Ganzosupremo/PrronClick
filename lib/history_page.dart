@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'practice.dart';
+import 'theme.dart';
 
 /// "12 s", "25 min", "1 h 5 min".
 String practiceTime(AppLocalizations t, int seconds) {
@@ -97,7 +98,7 @@ class _HistoryPageState extends State<HistoryPage> {
         final history = widget.state.library.history;
         return Scaffold(
           appBar: AppBar(
-            title: Text(t.history),
+            title: PageTitle(t.history),
             actions: [
               if (history.isNotEmpty)
                 IconButton(
@@ -646,7 +647,7 @@ class _SongProgressPageState extends State<SongProgressPage> {
         final date = DateFormat.MMMd(locale);
         final gain = song.lastBpm - song.firstBpm;
         return Scaffold(
-          appBar: AppBar(title: Text(song.song ?? t.historyNoSong)),
+          appBar: AppBar(title: PageTitle(song.song ?? t.historyNoSong)),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [

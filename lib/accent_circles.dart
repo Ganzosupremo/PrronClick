@@ -4,8 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import 'l10n/app_localizations.dart';
 import 'song.dart';
 
-/// One circle per beat, sized by its accent; a silent beat is an empty ring.
-/// With [onTap], tapping a beat changes its accent.
+/// One bar per beat, as tall as its accent; a silent beat is an empty
+/// outline. The beat playing lights up. With [onTap], tapping a beat changes
+/// its accent.
 class AccentCircles extends StatelessWidget {
   const AccentCircles({
     super.key,
@@ -28,28 +29,29 @@ class AccentCircles extends StatelessWidget {
       t.accentNormal,
       t.accentSilent,
     ];
-    Widget circle(int i) {
+    Widget bar(int i) {
       final level = levels[i], on = i == current;
-      final radius = const [18.0, 16.0, 14.0, 14.0][level];
-      // The level shows as how much orange; the beat playing as full orange
-      // with a light ring, so it never looks like a strong beat.
-      final fill = switch (level) {
-        _ when on && level != accentSilent => scheme.primary,
-        accentStrong => scheme.primary.withValues(alpha: 0.75),
-        accentMedium => scheme.primary.withValues(alpha: 0.35),
-        accentNormal => scheme.surfaceContainerHighest,
-        _ => null,
-      };
-      return Container(
-        width: radius * 2,
-        height: radius * 2,
+      final height = const [56.0, 40.0, 26.0, 26.0][level];
+      final silent = level == accentSilent;
+      // The height says the accent, so the beat playing can light up in
+      // full: amber on the bar's first beat, cyan on the others.
+      final lit = i == 0 ? scheme.primaryContainer : scheme.tertiary;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 60),
+        width: 30,
+        height: height,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: fill,
-          border: on
-              ? Border.all(color: scheme.onSurface, width: 3)
-              : level == accentSilent
-              ? Border.all(color: scheme.outline, width: 2)
+          borderRadius: BorderRadius.circular(8),
+          color: silent
+              ? null
+              : on
+              ? lit
+              : scheme.surfaceContainerHighest,
+          border: silent
+              ? Border.all(color: on ? lit : scheme.outline, width: 2)
+              : null,
+          boxShadow: on && !silent
+              ? [BoxShadow(color: lit.withValues(alpha: 0.6), blurRadius: 18)]
               : null,
         ),
       );
@@ -67,9 +69,13 @@ class AccentCircles extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onTap == null ? null : () => onTap!(i),
-                child: SizedBox.square(
-                  dimension: 48,
-                  child: Center(child: circle(i)),
+                child: SizedBox(
+                  width: 44,
+                  height: 64,
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: bar(i),
+                  ),
                 ),
               ),
             ),

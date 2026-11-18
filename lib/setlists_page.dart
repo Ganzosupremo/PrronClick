@@ -5,6 +5,7 @@ import 'app_state.dart';
 import 'l10n/app_localizations.dart';
 import 'setlist.dart';
 import 'song.dart';
+import 'theme.dart';
 import 'transfer.dart';
 
 class SetlistsPage extends StatelessWidget {
@@ -257,7 +258,7 @@ class SetlistPage extends StatelessWidget {
         final songs = setlist.songsFrom(state.library.songs);
         return Scaffold(
           appBar: AppBar(
-            title: Text(setlist.name),
+            title: PageTitle(setlist.name),
             actions: [
               IconButton(
                 tooltip: t.exportSetlist,
@@ -354,9 +355,12 @@ class SetlistPage extends StatelessWidget {
                       ),
                       title: Text('${i + 1}. ${song.name}'),
                       subtitle: Text(
-                        song.lengthSeconds == null && setlist.autoAdvance
-                            ? t.noDurationManual(song.summary)
-                            : song.summary,
+                        [
+                          ?song.author,
+                          song.lengthSeconds == null && setlist.autoAdvance
+                              ? t.noDurationManual(song.summary)
+                              : song.summary,
+                        ].join('\n'),
                       ),
                       onTap: () => _start(context, i),
                       trailing: IconButton(
@@ -413,7 +417,7 @@ class _SongPickerState extends State<_SongPicker> {
             for (final song in widget.songs)
               CheckboxListTile(
                 title: Text(song.name),
-                subtitle: Text(song.summary),
+                subtitle: Text([?song.author, song.summary].join('\n')),
                 value: picked.contains(song),
                 onChanged: (on) => setState(
                   () => on! ? picked.add(song) : picked.remove(song),

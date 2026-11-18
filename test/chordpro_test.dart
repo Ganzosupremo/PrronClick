@@ -36,6 +36,7 @@ void main() {
     final other = Song(
       id: 'x',
       name: 'Vals',
+      author: 'Los Panchos',
       bpm: 140,
       beatsPerBar: 3,
       sections: [

@@ -260,6 +260,7 @@ class AppState extends ChangeNotifier {
     final songs = setlistSongs, i = setlistIndex;
     return ShowInfo(
       song: song?.name,
+      author: song?.author,
       key: song?.key == null
           ? null
           : transposeChord(song!.key!, song.transpose),

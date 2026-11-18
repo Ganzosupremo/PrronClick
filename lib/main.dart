@@ -8,6 +8,7 @@ import 'metronome_page.dart';
 import 'setlists_page.dart';
 import 'settings_page.dart';
 import 'songs_page.dart';
+import 'theme.dart';
 import 'transfer.dart';
 
 Future<void> main() async {
@@ -20,11 +21,8 @@ class PrronClickApp extends StatelessWidget {
 
   final AppState state;
 
-  static final _light = ThemeData(colorSchemeSeed: Colors.deepOrange);
-  static final _dark = ThemeData(
-    colorSchemeSeed: Colors.deepOrange,
-    brightness: Brightness.dark,
-  );
+  static final _light = stageTheme(Brightness.light);
+  static final _dark = stageTheme(Brightness.dark);
 
   /// English first: it is what a phone in any other language gets.
   static const languages = [Locale('en'), Locale('es'), Locale('de')];
@@ -80,7 +78,7 @@ class _HomePageState extends State<HomePage> {
     final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text([t.tabMetronome, t.tabSongs, t.tabSetlists][tab]),
+        title: PageTitle([t.tabMetronome, t.tabSongs, t.tabSetlists][tab]),
         actions: [
           if (tab == 1)
             PopupMenuButton<bool>(
