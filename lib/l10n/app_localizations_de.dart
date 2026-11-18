@@ -669,4 +669,153 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get saveLeaderSetlist =>
       'Diese Setlist in meiner Bibliothek speichern';
+
+  @override
+  String get history => 'Übungsverlauf';
+
+  @override
+  String get historyNoSong => 'Ohne Song';
+
+  @override
+  String get historyEmpty =>
+      'Noch nichts geübt. Jedes Mal, wenn der Klick mindestens 10 Sekunden läuft, steht es hier.';
+
+  @override
+  String historyTimes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-mal',
+      one: 'einmal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyBpm(int bpm) {
+    return '$bpm BPM';
+  }
+
+  @override
+  String historyTempo(int first, int last, int best) {
+    return '$first → $last BPM (max. $best)';
+  }
+
+  @override
+  String get historyClear => 'Verlauf löschen';
+
+  @override
+  String get historyClearAsk =>
+      'Den ganzen Übungsverlauf löschen? Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String durationM(int minutes) {
+    return '$minutes Min.';
+  }
+
+  @override
+  String durationHm(int hours, int minutes) {
+    return '$hours Std. $minutes Min.';
+  }
+
+  @override
+  String durationS(int seconds) {
+    return '$seconds Sek.';
+  }
+
+  @override
+  String get historyRangeDay => 'Tag';
+
+  @override
+  String get historyRangeWeek => 'Woche';
+
+  @override
+  String get historyRangeMonth => 'Monat';
+
+  @override
+  String get historyPrevious => 'Zurück';
+
+  @override
+  String get historyNext => 'Weiter';
+
+  @override
+  String get historyWholePeriod => 'Ganzen Zeitraum zeigen';
+
+  @override
+  String get historyTime => 'Zeit';
+
+  @override
+  String get historySessionsLabel => 'Einheiten';
+
+  @override
+  String get historyDaysLabel => 'Übungstage';
+
+  @override
+  String get historyLongest => 'Längste Einheit';
+
+  @override
+  String get historyStreak => 'Serie';
+
+  @override
+  String historyStreakDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyVsPrevDay(String change) {
+    return '$change ggü. dem Vortag';
+  }
+
+  @override
+  String historyVsPrevWeek(String change) {
+    return '$change ggü. der Vorwoche';
+  }
+
+  @override
+  String historyVsPrevMonth(String change) {
+    return '$change ggü. dem Vormonat';
+  }
+
+  @override
+  String get historyTapHour =>
+      'Tippe auf einen Balken, um die Stunde zu sehen.';
+
+  @override
+  String get historyTapDay => 'Tippe auf einen Tag, um nur diesen zu sehen.';
+
+  @override
+  String historyMax(String time) {
+    return 'max. $time';
+  }
+
+  @override
+  String get historySongs => 'Songs';
+
+  @override
+  String get historyTools => 'Werkzeuge';
+
+  @override
+  String get historyNoTools => 'Ohne Werkzeuge';
+
+  @override
+  String get historyNothing => 'In diesem Zeitraum nichts.';
+
+  @override
+  String get historyBestBpm => 'Bestes Tempo';
+
+  @override
+  String get historyTempoChange => 'Tempoänderung';
+
+  @override
+  String get historyTempoPerSession => 'Tempo pro Einheit';
+
+  @override
+  String get historyTapPoint =>
+      'Tippe oder wische im Diagramm, um jede Einheit zu sehen.';
 }

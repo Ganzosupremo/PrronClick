@@ -1173,6 +1173,228 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Guardar este setlist en mi biblioteca'**
   String get saveLeaderSetlist;
+
+  /// No description provided for @history.
+  ///
+  /// In es, this message translates to:
+  /// **'Historial de práctica'**
+  String get history;
+
+  /// No description provided for @historyNoSong.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin canción'**
+  String get historyNoSong;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In es, this message translates to:
+  /// **'Todavía no hay práctica. Cada vez que el click suena al menos 10 segundos, queda anotado aquí.'**
+  String get historyEmpty;
+
+  /// No description provided for @historyTimes.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 vez} other{{count} veces}}'**
+  String historyTimes(int count);
+
+  /// No description provided for @historyBpm.
+  ///
+  /// In es, this message translates to:
+  /// **'{bpm} BPM'**
+  String historyBpm(int bpm);
+
+  /// No description provided for @historyTempo.
+  ///
+  /// In es, this message translates to:
+  /// **'{first} → {last} BPM (máx. {best})'**
+  String historyTempo(int first, int last, int best);
+
+  /// No description provided for @historyClear.
+  ///
+  /// In es, this message translates to:
+  /// **'Borrar historial'**
+  String get historyClear;
+
+  /// No description provided for @historyClearAsk.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Borrar todo el historial de práctica? No se puede deshacer.'**
+  String get historyClearAsk;
+
+  /// No description provided for @durationM.
+  ///
+  /// In es, this message translates to:
+  /// **'{minutes} min'**
+  String durationM(int minutes);
+
+  /// No description provided for @durationHm.
+  ///
+  /// In es, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String durationHm(int hours, int minutes);
+
+  /// No description provided for @durationS.
+  ///
+  /// In es, this message translates to:
+  /// **'{seconds} s'**
+  String durationS(int seconds);
+
+  /// No description provided for @historyRangeDay.
+  ///
+  /// In es, this message translates to:
+  /// **'Día'**
+  String get historyRangeDay;
+
+  /// No description provided for @historyRangeWeek.
+  ///
+  /// In es, this message translates to:
+  /// **'Semana'**
+  String get historyRangeWeek;
+
+  /// No description provided for @historyRangeMonth.
+  ///
+  /// In es, this message translates to:
+  /// **'Mes'**
+  String get historyRangeMonth;
+
+  /// No description provided for @historyPrevious.
+  ///
+  /// In es, this message translates to:
+  /// **'Anterior'**
+  String get historyPrevious;
+
+  /// No description provided for @historyNext.
+  ///
+  /// In es, this message translates to:
+  /// **'Siguiente'**
+  String get historyNext;
+
+  /// No description provided for @historyWholePeriod.
+  ///
+  /// In es, this message translates to:
+  /// **'Ver todo el periodo'**
+  String get historyWholePeriod;
+
+  /// No description provided for @historyTime.
+  ///
+  /// In es, this message translates to:
+  /// **'Tiempo'**
+  String get historyTime;
+
+  /// No description provided for @historySessionsLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Sesiones'**
+  String get historySessionsLabel;
+
+  /// No description provided for @historyDaysLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Días practicados'**
+  String get historyDaysLabel;
+
+  /// No description provided for @historyLongest.
+  ///
+  /// In es, this message translates to:
+  /// **'Sesión más larga'**
+  String get historyLongest;
+
+  /// No description provided for @historyStreak.
+  ///
+  /// In es, this message translates to:
+  /// **'Racha'**
+  String get historyStreak;
+
+  /// No description provided for @historyStreakDays.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 día} other{{count} días}}'**
+  String historyStreakDays(int count);
+
+  /// No description provided for @historyVsPrevDay.
+  ///
+  /// In es, this message translates to:
+  /// **'{change} vs. el día anterior'**
+  String historyVsPrevDay(String change);
+
+  /// No description provided for @historyVsPrevWeek.
+  ///
+  /// In es, this message translates to:
+  /// **'{change} vs. la semana anterior'**
+  String historyVsPrevWeek(String change);
+
+  /// No description provided for @historyVsPrevMonth.
+  ///
+  /// In es, this message translates to:
+  /// **'{change} vs. el mes anterior'**
+  String historyVsPrevMonth(String change);
+
+  /// No description provided for @historyTapHour.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca una barra para ver esa hora.'**
+  String get historyTapHour;
+
+  /// No description provided for @historyTapDay.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca un día para ver solo ese día.'**
+  String get historyTapDay;
+
+  /// No description provided for @historyMax.
+  ///
+  /// In es, this message translates to:
+  /// **'máx. {time}'**
+  String historyMax(String time);
+
+  /// No description provided for @historySongs.
+  ///
+  /// In es, this message translates to:
+  /// **'Canciones'**
+  String get historySongs;
+
+  /// No description provided for @historyTools.
+  ///
+  /// In es, this message translates to:
+  /// **'Herramientas'**
+  String get historyTools;
+
+  /// No description provided for @historyNoTools.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin herramientas'**
+  String get historyNoTools;
+
+  /// No description provided for @historyNothing.
+  ///
+  /// In es, this message translates to:
+  /// **'Nada en este periodo.'**
+  String get historyNothing;
+
+  /// No description provided for @historyBestBpm.
+  ///
+  /// In es, this message translates to:
+  /// **'Mejor tempo'**
+  String get historyBestBpm;
+
+  /// No description provided for @historyTempoChange.
+  ///
+  /// In es, this message translates to:
+  /// **'Cambio de tempo'**
+  String get historyTempoChange;
+
+  /// No description provided for @historyTempoPerSession.
+  ///
+  /// In es, this message translates to:
+  /// **'Tempo por sesión'**
+  String get historyTempoPerSession;
+
+  /// No description provided for @historyTapPoint.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca o desliza en el gráfico para ver cada sesión.'**
+  String get historyTapPoint;
 }
 
 class _AppLocalizationsDelegate

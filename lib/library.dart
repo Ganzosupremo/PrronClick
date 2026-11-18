@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'practice.dart';
 import 'setlist.dart';
 import 'song.dart';
 
@@ -35,8 +36,10 @@ class Library {
     this.language = '',
     List<Song>? songs,
     List<Setlist>? setlists,
+    List<Practice>? history,
   }) : songs = songs ?? [],
-       setlists = setlists ?? [];
+       setlists = setlists ?? [],
+       history = history ?? [];
 
   factory Library.fromJson(Map<String, Object?> json) {
     final settings = (json['settings'] as Map?) ?? const {};
@@ -89,6 +92,10 @@ class Library {
         for (final s in (json['setlists'] as List?) ?? const [])
           ?Setlist.fromJson(s),
       ],
+      history: [
+        for (final p in (json['history'] as List?) ?? const [])
+          ?Practice.fromJson(p),
+      ],
     );
   }
 
@@ -124,6 +131,9 @@ class Library {
   String language;
   final List<Song> songs;
   final List<Setlist> setlists;
+
+  /// When the click played what, oldest first (see [Practice]).
+  final List<Practice> history;
 
   /// Adds an imported song. If we already have it (same id, else same name)
   /// ours takes its content and keeps its id, which setlists refer to.
@@ -201,6 +211,7 @@ class Library {
     },
     'songs': [for (final s in songs) s.toJson()],
     'setlists': [for (final s in setlists) s.toJson()],
+    'history': [for (final p in history) p.toJson()],
   };
 }
 

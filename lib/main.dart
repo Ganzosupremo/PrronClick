@@ -2,6 +2,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
+import 'history_page.dart';
 import 'l10n/app_localizations.dart';
 import 'metronome_page.dart';
 import 'setlists_page.dart';
@@ -99,6 +100,15 @@ class _HomePageState extends State<HomePage> {
               icon: const Icon(Icons.file_open_outlined),
               onPressed: () => importSetlist(context, widget.state),
             ),
+          IconButton(
+            tooltip: t.history,
+            icon: const Icon(Icons.insights_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => HistoryPage(state: widget.state),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: t.settings,
             icon: const Icon(Icons.settings_outlined),

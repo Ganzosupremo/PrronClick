@@ -666,4 +666,152 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saveLeaderSetlist => 'Save this setlist to my library';
+
+  @override
+  String get history => 'Practice history';
+
+  @override
+  String get historyNoSong => 'No song';
+
+  @override
+  String get historyEmpty =>
+      'No practice yet. Each time the click plays for at least 10 seconds, it is noted here.';
+
+  @override
+  String historyTimes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: 'once',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyBpm(int bpm) {
+    return '$bpm BPM';
+  }
+
+  @override
+  String historyTempo(int first, int last, int best) {
+    return '$first → $last BPM (best $best)';
+  }
+
+  @override
+  String get historyClear => 'Clear history';
+
+  @override
+  String get historyClearAsk =>
+      'Clear the whole practice history? This cannot be undone.';
+
+  @override
+  String durationM(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String durationHm(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String durationS(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get historyRangeDay => 'Day';
+
+  @override
+  String get historyRangeWeek => 'Week';
+
+  @override
+  String get historyRangeMonth => 'Month';
+
+  @override
+  String get historyPrevious => 'Previous';
+
+  @override
+  String get historyNext => 'Next';
+
+  @override
+  String get historyWholePeriod => 'Show the whole period';
+
+  @override
+  String get historyTime => 'Time';
+
+  @override
+  String get historySessionsLabel => 'Sessions';
+
+  @override
+  String get historyDaysLabel => 'Days practised';
+
+  @override
+  String get historyLongest => 'Longest session';
+
+  @override
+  String get historyStreak => 'Streak';
+
+  @override
+  String historyStreakDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyVsPrevDay(String change) {
+    return '$change vs. the day before';
+  }
+
+  @override
+  String historyVsPrevWeek(String change) {
+    return '$change vs. the week before';
+  }
+
+  @override
+  String historyVsPrevMonth(String change) {
+    return '$change vs. the month before';
+  }
+
+  @override
+  String get historyTapHour => 'Tap a bar to see that hour.';
+
+  @override
+  String get historyTapDay => 'Tap a day to see only that day.';
+
+  @override
+  String historyMax(String time) {
+    return 'max. $time';
+  }
+
+  @override
+  String get historySongs => 'Songs';
+
+  @override
+  String get historyTools => 'Tools';
+
+  @override
+  String get historyNoTools => 'Without tools';
+
+  @override
+  String get historyNothing => 'Nothing in this period.';
+
+  @override
+  String get historyBestBpm => 'Best tempo';
+
+  @override
+  String get historyTempoChange => 'Tempo change';
+
+  @override
+  String get historyTempoPerSession => 'Tempo per session';
+
+  @override
+  String get historyTapPoint =>
+      'Tap or slide on the chart to see each session.';
 }

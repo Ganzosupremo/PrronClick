@@ -12,6 +12,7 @@ import 'chordpro.dart';
 import 'cues.dart';
 import 'engine.dart';
 import 'library.dart';
+import 'practice.dart';
 import 'setlist.dart';
 import 'share.dart';
 import 'song.dart';
@@ -398,6 +399,7 @@ class AppState extends ChangeNotifier {
   void _tick() {
     _rampTick();
     _cueTick();
+    _practiceTick();
     final song = currentSong;
     if (song == null || !canControl) return;
     final setlist = activeSetlist;
@@ -475,6 +477,54 @@ class AppState extends ChangeNotifier {
       _changeSection = next;
     }
     notifyListeners();
+  }
+
+  // ---- Practice history ----
+
+  Practice? _practicing; // what is playing now, until it stops or changes
+
+  /// Notes what the click plays: a new entry when it starts or the song
+  /// changes, the highest tempo while it plays.
+  void _practiceTick() {
+    final playing = engine.isPlaying();
+    final song = showInfo.song;
+    if (_practicing case final p? when !playing || p.song != song) {
+      _endPractice();
+    }
+    if (!playing) return;
+    final bpm = engine.tempo().round().clamp(20, 300);
+    final p = _practicing ??= Practice(
+      start: DateTime.now(),
+      seconds: 0,
+      song: song,
+      bpm: bpm,
+    );
+    p.bpm = max(p.bpm, bpm);
+    // The tools as they apply now (see _applyPractice and _rampTick).
+    if (library.practiceTools) {
+      if (library.ramp && canControl) p.tools.add(PracticeTool.ramp);
+      if (gapTrainer) p.tools.add(PracticeTool.gap);
+      if (displaceBars > 0) p.tools.add(PracticeTool.displace);
+    }
+  }
+
+  void _endPractice() {
+    final p = _practicing!;
+    _practicing = null;
+    p.seconds = DateTime.now().difference(p.start).inSeconds;
+    if (p.seconds < minPracticeSeconds) return;
+    final history = library.history..add(p);
+    if (history.length > maxPracticeEntries) {
+      history.removeRange(0, history.length - maxPracticeEntries);
+    }
+    notifyListeners();
+    store.save(library);
+  }
+
+  void clearHistory() {
+    library.history.clear();
+    notifyListeners();
+    store.save(library);
   }
 
   // ---- Tempo ramp ----
