@@ -603,11 +603,7 @@ class AppState extends ChangeNotifier {
   void _recordPractice(Practice p) {
     p.seconds = DateTime.now().difference(p.start).inSeconds;
     if (p.seconds < minPracticeSeconds) return;
-    final history = library.history;
-    if (!history.contains(p)) history.add(p);
-    if (history.length > maxPracticeEntries) {
-      history.removeRange(0, history.length - maxPracticeEntries);
-    }
+    library.keepPractice(p);
     notifyListeners();
     store.save(library);
   }
@@ -841,16 +837,19 @@ class AppState extends ChangeNotifier {
   /// A bar before a section starts, a voice says its name. Followers too: they
   /// get the leader's next section and its beat.
   void _cueTick() {
-    final info = showInfo;
-    final name = info.nextSection, change = info.sectionChange;
-    final cue = name == null ? null : sectionCue(name);
-    if (!library.voiceSections || !engine.isPlaying() || cue == null) {
+    // Cheap checks first: this runs ten times a second.
+    final info = library.voiceSections && engine.isPlaying() ? showInfo : null;
+    final change = info?.sectionChange;
+    final at = change == null ? null : change - engine.beatsPerBar();
+    if (at != null && at == _cuedBeat) return; // already said or scheduled
+    final name = info?.nextSection;
+    final cue = name == null || at == null ? null : sectionCue(name);
+    if (cue == null) {
       if (_cuedBeat != null) engine.clearCues();
       _cuedBeat = null;
       return;
     }
-    final at = change! - engine.beatsPerBar();
-    if (at == _cuedBeat || at <= engine.beat()) return;
+    if (at! <= engine.beat()) return;
     final (slot, slot2) = cueToSay(cue);
     engine.scheduleCue(at, slot, slot2);
     _cuedBeat = at;

@@ -82,11 +82,12 @@ class ShowInfo {
       final int n when n.abs() <= 11 => n,
       _ => 0,
     };
+    // A next section is only usable with the beat where it starts.
     final ns = m['nextSection'];
-    final nextSection = ns is Map ? text(ns['name']) : null;
     final at = ns is Map ? ns['at'] : null;
-    final sectionChange = nextSection != null && at is num
-        ? at.toDouble() + k
+    final nextSection = at is num ? text((ns as Map)['name']) : null;
+    final sectionChange = nextSection != null
+        ? (at as num).toDouble() + k
         : null;
     if (s is! Map) {
       return ShowInfo(

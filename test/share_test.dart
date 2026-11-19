@@ -77,7 +77,7 @@ void main() {
     );
     expect(
       (junk.section, junk.nextSection, junk.sectionChange),
-      (null, 'Coro', null),
+      (null, null, null), // a name with no beat to start on is dropped
     );
   });
 

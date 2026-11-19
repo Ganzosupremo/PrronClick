@@ -732,6 +732,15 @@ double pc_beat(void) {
   return g->link.captureAppSessionState().beatAtTime(g->link.clock().micros(), kQuantum);
 }
 
+bool pc_silent_now(void) {
+  if (!g) return false;
+  const auto state = g->link.captureAppSessionState();
+  const double beat = state.beatAtTime(g->link.clock().micros(), kQuantum);
+  const BarConfig c = currentConfig();
+  return state.isPlaying() && beat >= 0.0 &&
+         pc::isMuted(c.rules, std::floor(pc::clickCoord(c.rules, beat)));
+}
+
 long long pc_next_felt_beat(bool downbeat_only, int* level) {
   if (!g || g->calibrating) return -1;
   const auto state = g->link.captureAppSessionState();

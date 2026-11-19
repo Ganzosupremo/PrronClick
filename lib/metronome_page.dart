@@ -35,6 +35,7 @@ class _MetronomePageState extends State<MetronomePage>
   int pendingBeatsPerBar = 0;
   double muteUntil = 0;
   double countUntil = 0;
+  bool silent = false;
 
   _Panel? panel; // null = every section closed
 
@@ -54,6 +55,7 @@ class _MetronomePageState extends State<MetronomePage>
         origin = e.barOrigin();
         muteUntil = e.muteUntil();
         countUntil = e.countUntil();
+        silent = e.silentNow();
         // A meter picked by hand starts on the next downbeat: show it right
         // away. A setlist's next song is further off and is not shown.
         final pending = e.pendingBeatsPerBar();
@@ -121,11 +123,6 @@ class _MetronomePageState extends State<MetronomePage>
     final bar = ((beat - origin) / beatsPerBar).floor();
     final paused = playing && beat >= origin && beat < muteUntil;
     final counting = playing && !paused && beat >= origin && beat < countUntil;
-    final muted =
-        playing &&
-        state.library.practiceTools &&
-        state.gapTrainer &&
-        bar % (state.gapPlay + state.gapMute) >= state.gapPlay;
 
     final lib = state.library;
 
@@ -142,7 +139,7 @@ class _MetronomePageState extends State<MetronomePage>
         ? t.statusPause
         : counting
         ? t.countIn
-        : muted
+        : silent
         ? t.statusSilence
         : null;
 

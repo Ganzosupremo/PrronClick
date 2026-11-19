@@ -153,6 +153,15 @@ class Library {
   /// When the click played what, oldest first (see [Practice]).
   final List<Practice> history;
 
+  /// Puts [p] in the history once (it is saved again as it grows), keeping
+  /// the newest [maxPracticeEntries].
+  void keepPractice(Practice p) {
+    if (!history.contains(p)) history.add(p);
+    if (history.length > maxPracticeEntries) {
+      history.removeRange(0, history.length - maxPracticeEntries);
+    }
+  }
+
   /// Adds an imported song. If we already have it (same id, else same name)
   /// ours takes its content and keeps its id, which setlists refer to.
   /// Returns the song now in the library.

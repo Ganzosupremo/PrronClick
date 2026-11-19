@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prronclick/library.dart';
+import 'package:prronclick/practice.dart';
 import 'package:prronclick/setlist.dart';
 import 'package:prronclick/song.dart';
 
@@ -110,6 +111,25 @@ void main() {
     blocker.deleteSync();
     await store.save(Library(language: 'en'));
     expect((await store.load()).language, 'en');
+  });
+
+  test('a practice is kept once as it grows; the oldest go first', () {
+    Practice at(int i) => Practice(
+      start: DateTime(2026, 1, 1).add(Duration(minutes: i)),
+      seconds: 60,
+      bpm: 120,
+    );
+    final lib = Library();
+    final p = at(0);
+    lib.keepPractice(p);
+    p.seconds = 120; // a minute later, saved again
+    lib.keepPractice(p);
+    expect(lib.history.single.seconds, 120);
+    for (var i = 1; i <= maxPracticeEntries; i++) {
+      lib.keepPractice(at(i));
+    }
+    expect(lib.history, hasLength(maxPracticeEntries));
+    expect(lib.history.contains(p), isFalse);
   });
 
   test('unusable song entries are skipped', () async {

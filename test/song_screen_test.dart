@@ -53,6 +53,9 @@ class FakeEngine implements Engine {
   bool Function(int, Pointer<Void>, int) get loadCue =>
       (_, _, _) => false;
   @override
+  bool Function() get silentNow =>
+      () => false;
+  @override
   ({double at, bool downbeat, bool count})? lastFelt(bool downbeatOnly) => null;
 
   // Every other getter is a do-nothing function (up to setBar's 8 arguments)

@@ -135,6 +135,9 @@ class Engine {
       muteUntil = lib.lookupFunction<Double Function(), double Function()>(
         'pc_mute_until',
       ),
+      silentNow = lib.lookupFunction<Bool Function(), bool Function()>(
+        'pc_silent_now',
+      ),
       pendingMuteBeats = lib
           .lookupFunction<Double Function(), double Function()>(
             'pc_pending_mute_beats',
@@ -240,6 +243,9 @@ class Engine {
   /// Count-in bars before each song we start; 0 = none.
   final void Function(int) setCountIn;
   final double Function() muteUntil;
+
+  /// Muted where the click is now: a pause or the gap trainer's silence.
+  final bool Function() silentNow;
   final double Function() pendingMuteBeats;
   final int Function() beatsPerBar;
   final double Function() barOrigin;

@@ -118,6 +118,10 @@ PC_API double pc_output_latency_ms(void);
 // Current beat position on the session timeline (for the UI).
 PC_API double pc_beat(void);
 
+// Whether the click is muted where it is now (a pause or the gap trainer's
+// silent bars), by the same rules the audio uses.
+PC_API bool pc_silent_now(void);
+
 // Vibration: microseconds until the next beat whose click sounds (only bar
 // starts if downbeat_only), and its accent in *level (0 strong, 1 medium,
 // 2 plain). -1 if stopped, calibrating or none in the next 16 beats.
